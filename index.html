@@ -349,7 +349,8 @@
         let viewW = W,
           viewH = H;
         let GAME_SCALE = 1;
-        const MIN_VISIBLE_WIDTH = 660; // ancho mínimo de "papel" que siempre debe entrar en pantalla
+        // -------------------- CAMBIO 1: ancho mínimo reducido para más zoom --------------------
+        const MIN_VISIBLE_WIDTH = 480; // antes 660
         let tiltX = 0;
         let useTilt = false;
         const isTouchDevice =
@@ -838,7 +839,9 @@
         const NAV_BOX_W = ARROW_L * 2 + 4; // ~32, igual al ancho real del dibujo
         const NAV_BOX_H = ARROW_L + 6; // ~20, igual al alto real del dibujo
         const NAV_GAP = 40; // distancia entre el borde del texto y la flecha izquierda (como siempre)
-        const NAV_GAP_RIGHT = 90; // la flecha derecha se aleja bastante más del final del nivel
+        // -------------------- CAMBIO 2: flecha derecha más cerca del texto --------------------
+        const NAV_GAP_RIGHT = 30; // antes 90
+
         function getNavBoxes() {
           // izquierda: sigue en la fila del medio del nivel (como siempre),
           // pegada al borde izquierdo de la columna
