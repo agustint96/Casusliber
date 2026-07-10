@@ -159,7 +159,11 @@
         z-index: 6;
         pointer-events: none;
         opacity: 0.68;
-        transition: opacity 0.4s ease;
+        transition: opacity 0.6s ease;
+      }
+      .help-bubble.fade-out,
+      .mobile-tip.fade-out {
+        opacity: 0;
       }
       .help-text {
         font-family: "Special Elite", monospace;
@@ -223,13 +227,16 @@
         bottom: max(76px, calc(env(safe-area-inset-bottom) + 52px));
         background: rgba(255, 255, 255, 0.94);
         border: 1px solid rgba(28, 28, 28, 0.16);
-        padding: 8px 12px;
+        padding: 8px 14px;
         border-radius: 999px;
+        font-family: "Special Elite", monospace;
         font-size: 11px;
+        letter-spacing: 0.3px;
         color: var(--ink);
         text-align: center;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
         white-space: nowrap;
+        transition: opacity 0.6s ease;
       }
       .mobile-btn {
         bottom: max(28px, calc(env(safe-area-inset-bottom) + 8px));
@@ -239,6 +246,12 @@
         font-size: 11px;
       }
       @media (max-width: 700px) {
+        #game {
+          inset: 2rem;
+          width: calc(100vw - 4rem);
+          height: calc(100vh - 4rem);
+          height: calc(100dvh - 4rem);
+        }
         .titlebar {
           width: min(92vw, 320px);
         }
@@ -264,10 +277,7 @@
           border-radius: 999px;
         }
         .help-bubble {
-          right: 50%;
-          bottom: max(110px, calc(env(safe-area-inset-bottom) + 82px));
-          transform: translateX(50%);
-          opacity: 0.74;
+          display: none;
         }
       }
     </style>
@@ -277,7 +287,7 @@
     <div class="fade-overlay" id="fadeOverlay"></div>
 
     <div class="mobile-tip" id="mobileTip">
-      Inclina para moverte · deslizá hacia arriba para saltar
+      Rotá la pantalla para moverte y deslizá para arriba para saltar
     </div>
     <button class="btn mobile-btn hidden" id="sensorButton" type="button">
       Activar giroscopio
@@ -335,6 +345,10 @@
         const ctx = canvas.getContext("2d");
         const mobileTip = document.getElementById("mobileTip");
         const sensorButton = document.getElementById("sensorButton");
+        const helpBubble = document.getElementById("helpBubble");
+        if (helpBubble) {
+          setTimeout(() => helpBubble.classList.add("fade-out"), 2000);
+        }
         let W = window.innerWidth,
           H = window.innerHeight;
         // "viewW"/"viewH" son el ancho/alto REAL del mundo que entra en
@@ -362,25 +376,29 @@
 
         function resizeCanvas() {
           const dpr = Math.min(window.devicePixelRatio || 1, 2);
-          W = window.innerWidth;
-          H = window.innerHeight;
+          const rect = canvas.getBoundingClientRect();
+          W = rect.width;
+          H = rect.height;
           GAME_SCALE = Math.min(1, W / MIN_VISIBLE_WIDTH);
           viewW = W / GAME_SCALE;
           viewH = H / GAME_SCALE;
           canvas.width = Math.round(W * dpr);
           canvas.height = Math.round(H * dpr);
-          canvas.style.width = `${W}px`;
-          canvas.style.height = `${H}px`;
           ctx.setTransform(dpr * GAME_SCALE, 0, 0, dpr * GAME_SCALE, 0, 0);
         }
         resizeCanvas();
         window.addEventListener("resize", resizeCanvas);
         window.addEventListener("orientationchange", resizeCanvas);
 
+        let mobileTipFadeScheduled = false;
         function updateTiltUi() {
           if (!mobileTip) return;
           const showHint = isTouchDevice && !useTilt;
           mobileTip.classList.toggle("hidden", !showHint);
+          if (showHint && !mobileTipFadeScheduled) {
+            mobileTipFadeScheduled = true;
+            setTimeout(() => mobileTip.classList.add("fade-out"), 2000);
+          }
           if (sensorButton) {
             sensorButton.classList.toggle(
               "hidden",
@@ -405,7 +423,7 @@
                   useTilt = true;
                   updateTiltUi();
                   mobileTip.textContent =
-                    "Inclina para moverte · deslizá hacia arriba para saltar";
+                    "Rotá la pantalla para moverte y deslizá para arriba para saltar";
                 } else {
                   sensorButton.textContent = "Activar giroscopio";
                   mobileTip.textContent = "No se pudo activar el giroscopio";
