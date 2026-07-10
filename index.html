@@ -144,7 +144,7 @@
         background: #ffffff;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 1.4s ease;
+        transition: opacity 3s ease;
         z-index: 999;
       }
       .fade-overlay.active {
@@ -216,34 +216,27 @@
         background: linear-gradient(to bottom, #e6e6e6, #d4d4d4);
         box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
       }
-      .mobile-tip,
-      .mobile-btn {
+      .mobile-tip {
         position: fixed;
         left: 50%;
         transform: translateX(-50%);
         z-index: 6;
-      }
-      .mobile-tip {
-        bottom: max(76px, calc(env(safe-area-inset-bottom) + 52px));
+        bottom: max(28px, calc(env(safe-area-inset-bottom) + 8px));
         background: rgba(255, 255, 255, 0.94);
         border: 1px solid rgba(28, 28, 28, 0.16);
-        padding: 8px 14px;
-        border-radius: 999px;
+        padding: 8px 16px;
+        border-radius: 16px;
         font-family: "Special Elite", monospace;
         font-size: 11px;
         letter-spacing: 0.3px;
         color: var(--ink);
         text-align: center;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-        white-space: nowrap;
+        white-space: normal;
+        width: max-content;
+        max-width: min(88vw, 300px);
+        line-height: 1.5;
         transition: opacity 0.6s ease;
-      }
-      .mobile-btn {
-        bottom: max(28px, calc(env(safe-area-inset-bottom) + 8px));
-        margin-top: 0;
-        border-radius: 999px;
-        padding: 10px 14px;
-        font-size: 11px;
       }
       @media (max-width: 700px) {
         #game {
@@ -289,9 +282,6 @@
     <div class="mobile-tip" id="mobileTip">
       Deslizá el dedo hacia los costados para moverte y hacia arriba para saltar
     </div>
-    <button class="btn mobile-btn hidden" id="sensorButton" type="button">
-      Activar giroscopio
-    </button>
 
     <div class="help-bubble" id="helpBubble">
       <p class="help-text">Ad movendum, utere</p>
@@ -344,7 +334,6 @@
         const canvas = document.getElementById("game");
         const ctx = canvas.getContext("2d");
         const mobileTip = document.getElementById("mobileTip");
-        const sensorButton = document.getElementById("sensorButton");
         const helpBubble = document.getElementById("helpBubble");
         let W = window.innerWidth,
           H = window.innerHeight;
@@ -377,16 +366,11 @@
         // personaje y las letras se ven bastante más grandes. NARROW_BREAKPOINT
         // usa el mismo corte que ya usa el CSS (@media max-width:700px).
         const NARROW_BREAKPOINT = 700;
-        const MOBILE_VISIBLE_WIDTH = 460; // más chico = más zoom
+        const MOBILE_VISIBLE_WIDTH = 390; // más chico = más zoom
         let isNarrowScreen = false;
-        let tiltX = 0;
-        let useTilt = false;
         const isTouchDevice =
           window.matchMedia("(pointer: coarse)").matches ||
           "ontouchstart" in window;
-        const needsOrientationPermission =
-          typeof DeviceOrientationEvent !== "undefined" &&
-          typeof DeviceOrientationEvent.requestPermission === "function";
 
         if (helpBubble) {
           if (isTouchDevice) {
@@ -420,70 +404,14 @@
         window.addEventListener("resize", resizeCanvas);
         window.addEventListener("orientationchange", resizeCanvas);
 
-        let mobileTipFadeScheduled = false;
-        function updateTiltUi() {
-          if (!mobileTip) return;
-          const showHint = isTouchDevice && !useTilt;
-          mobileTip.classList.toggle("hidden", !showHint);
-          if (showHint && !mobileTipFadeScheduled) {
-            mobileTipFadeScheduled = true;
+        // en celular, el globito de instrucciones (deslizar para moverse)
+        // se muestra un momento y se desvanece solo; en desktop no aplica
+        if (mobileTip) {
+          if (isTouchDevice) {
             setTimeout(() => mobileTip.classList.add("fade-out"), 2000);
-          }
-          if (sensorButton) {
-            sensorButton.classList.toggle(
-              "hidden",
-              !isTouchDevice || useTilt || !needsOrientationPermission,
-            );
-          }
-        }
-
-        // cuántos grados de inclinación hacen falta para llegar a velocidad
-        // máxima: cuanto más alto, MENOS sensible es el sensor (hace falta
-        // inclinar más el celular para el mismo efecto)
-        const TILT_MAX_DEGREES = 70; // antes 45 (muy sensible, se disparaba con cualquier movimiento)
-        function handleOrientation(event) {
-          if (typeof event.gamma === "number") {
-            tiltX = Math.max(-1, Math.min(1, event.gamma / TILT_MAX_DEGREES));
-          }
-        }
-
-        function enableTiltControl() {
-          if (!window.DeviceOrientationEvent) return;
-          if (typeof DeviceOrientationEvent.requestPermission === "function") {
-            sensorButton.textContent = "Activando...";
-            DeviceOrientationEvent.requestPermission()
-              .then((response) => {
-                if (response === "granted") {
-                  useTilt = true;
-                  updateTiltUi();
-                  mobileTip.textContent =
-                    "Deslizá el dedo hacia los costados para moverte y hacia arriba para saltar";
-                } else {
-                  sensorButton.textContent = "Activar giroscopio";
-                  mobileTip.textContent = "No se pudo activar el giroscopio";
-                }
-              })
-              .catch(() => {
-                sensorButton.textContent = "Activar giroscopio";
-                mobileTip.textContent = "No se pudo activar el giroscopio";
-              });
           } else {
-            useTilt = true;
-            updateTiltUi();
+            mobileTip.classList.add("hidden");
           }
-        }
-
-        if (window.DeviceOrientationEvent) {
-          window.addEventListener("deviceorientation", handleOrientation);
-          if (needsOrientationPermission) {
-            sensorButton?.addEventListener("click", enableTiltControl);
-            updateTiltUi();
-          } else {
-            useTilt = true;
-            updateTiltUi();
-          }
-        } else {
-          mobileTip.textContent = "Tu dispositivo no soporta inclinación";
         }
 
         // ---------- Texto fuente tomado del PDF de Casus Liber ----------
@@ -924,14 +852,14 @@
         }
 
         // Se llama al tocar la flecha derecha en el último nivel
-        // (nivelfinal.js): funde la pantalla a blanco y, 2 segundos
+        // (nivelfinal.js): funde la pantalla a blanco y, 10 segundos
         // después, reinicia el juego desde el principio.
         const fadeOverlay = document.getElementById("fadeOverlay");
         function endGame() {
           if (fadeOverlay) fadeOverlay.classList.add("active");
           setTimeout(() => {
             location.reload();
-          }, 2000);
+          }, 10000);
         }
 
         const ARROW_L = 14; // largo de la flecha (mismo valor que usa drawNavArrow)
@@ -1002,7 +930,6 @@
               1,
               (keys["ArrowLeft"] || keys["a"] || keys["A"] ? -1 : 0) +
                 (keys["ArrowRight"] || keys["d"] || keys["D"] ? 1 : 0) +
-                (useTilt ? tiltX * 0.7 : 0) +
                 touchAxis,
             ),
           );
