@@ -287,7 +287,7 @@
     <div class="fade-overlay" id="fadeOverlay"></div>
 
     <div class="mobile-tip" id="mobileTip">
-      Rotá la pantalla para moverte y deslizá para arriba para saltar
+      Deslizá el dedo hacia los costados para moverte y hacia arriba para saltar
     </div>
     <button class="btn mobile-btn hidden" id="sensorButton" type="button">
       Activar giroscopio
@@ -360,8 +360,15 @@
         let viewW = W,
           viewH = H;
         let GAME_SCALE = 1;
-        // -------------------- CAMBIO 1: ancho mínimo reducido para más zoom --------------------
-        const MIN_VISIBLE_WIDTH = 480; // antes 660
+        // -------------------- ancho mínimo visible del "mundo" --------------------
+        // Tiene que alcanzar para mostrar la columna de texto (450px) MÁS el
+        // espacio que ocupan las flechas de navegación a los costados
+        // (72px a la izquierda, ~62px a la derecha respecto del borde de la
+        // columna). Si este valor es demasiado chico, las flechas quedan
+        // literalmente fuera del canvas en pantallas angostas (por eso no
+        // se veían en celulares). Mínimo matemático real: ~594. Se deja
+        // con un margen chico (620) para no recortarlas justo en el borde.
+        const MIN_VISIBLE_WIDTH = 620; // antes 480 (muy chico, tapaba las flechas) / 660 (original)
         let tiltX = 0;
         let useTilt = false;
         const isTouchDevice =
@@ -412,9 +419,13 @@
           }
         }
 
+        // cuántos grados de inclinación hacen falta para llegar a velocidad
+        // máxima: cuanto más alto, MENOS sensible es el sensor (hace falta
+        // inclinar más el celular para el mismo efecto)
+        const TILT_MAX_DEGREES = 70; // antes 45 (muy sensible, se disparaba con cualquier movimiento)
         function handleOrientation(event) {
           if (typeof event.gamma === "number") {
-            tiltX = Math.max(-1, Math.min(1, event.gamma / 45));
+            tiltX = Math.max(-1, Math.min(1, event.gamma / TILT_MAX_DEGREES));
           }
         }
 
@@ -428,7 +439,7 @@
                   useTilt = true;
                   updateTiltUi();
                   mobileTip.textContent =
-                    "Rotá la pantalla para moverte y deslizá para arriba para saltar";
+                    "Deslizá el dedo hacia los costados para moverte y hacia arriba para saltar";
                 } else {
                   sensorButton.textContent = "Activar giroscopio";
                   mobileTip.textContent = "No se pudo activar el giroscopio";
@@ -739,36 +750,66 @@
           setKeycapPressed(e.key, false);
         });
 
-        // ---------- Control táctil: deslizar el dedo hacia arriba en
-        // cualquier parte del canvas = saltar (además de la inclinación
-        // del celular, que ya mueve al personaje a los costados) ----------
+        // ---------- Control táctil ----------
+        // - Deslizar el dedo hacia ARRIBA en cualquier parte del canvas = saltar.
+        // - Mientras un dedo está apoyado, arrastrarlo hacia la IZQUIERDA o la
+        //   DERECHA desde el punto donde tocó mueve al personaje para ese
+        //   mismo lado (como un joystick): cuanto más lejos del punto de
+        //   inicio, más rápido se mueve, hasta TOUCH_MOVE_RANGE px.
+        // - Además sigue funcionando la inclinación del celular, que se suma
+        //   a este control (por si el jugador la prefiere).
         const SWIPE_JUMP_PX = 26; // desplazamiento vertical mínimo para contar como "deslizar hacia arriba"
         const TOUCH_JUMP_BUFFER_FRAMES = 10; // si el deslizamiento llega un poco antes de tocar el piso, igual salta al aterrizar
-        const touchStartY = new Map(); // por cada dedo (id de touch), dónde empezó el gesto
+        const TOUCH_MOVE_RANGE = 60; // px de arrastre horizontal para llegar a la velocidad máxima
+        const touchStartY = new Map(); // por cada dedo (id de touch), dónde empezó el gesto (vertical)
+        const touchStartX = new Map(); // por cada dedo (id de touch), dónde empezó el gesto (horizontal)
         const touchJumpedAlready = new Map(); // para no disparar más de un salto por gesto/dedo
         let touchJumpBuffer = 0;
+        let touchAxis = 0; // -1 (izquierda) a 1 (derecha), según el arrastre del dedo que controla el movimiento
+        let dragTouchId = null; // qué dedo controla el movimiento horizontal ahora mismo
 
         function onTouchStart(e) {
           for (const t of e.changedTouches) {
             touchStartY.set(t.identifier, t.clientY);
+            touchStartX.set(t.identifier, t.clientX);
             touchJumpedAlready.set(t.identifier, false);
+            if (dragTouchId === null) dragTouchId = t.identifier;
           }
         }
         function onTouchMove(e) {
           for (const t of e.changedTouches) {
-            if (touchJumpedAlready.get(t.identifier)) continue;
-            const startY = touchStartY.get(t.identifier);
-            if (startY === undefined) continue;
-            if (startY - t.clientY > SWIPE_JUMP_PX) {
-              touchJumpedAlready.set(t.identifier, true);
-              touchJumpBuffer = TOUCH_JUMP_BUFFER_FRAMES;
+            // salto: deslizar hacia arriba
+            if (!touchJumpedAlready.get(t.identifier)) {
+              const startY = touchStartY.get(t.identifier);
+              if (startY !== undefined && startY - t.clientY > SWIPE_JUMP_PX) {
+                touchJumpedAlready.set(t.identifier, true);
+                touchJumpBuffer = TOUCH_JUMP_BUFFER_FRAMES;
+              }
+            }
+            // movimiento: arrastrar hacia los costados
+            if (t.identifier === dragTouchId) {
+              const startX = touchStartX.get(t.identifier);
+              if (startX !== undefined) {
+                const dx = t.clientX - startX;
+                touchAxis = Math.max(-1, Math.min(1, dx / TOUCH_MOVE_RANGE));
+              }
             }
           }
         }
         function onTouchEnd(e) {
           for (const t of e.changedTouches) {
             touchStartY.delete(t.identifier);
+            touchStartX.delete(t.identifier);
             touchJumpedAlready.delete(t.identifier);
+            if (t.identifier === dragTouchId) {
+              dragTouchId = null;
+              touchAxis = 0;
+              // si queda otro dedo apoyado, que ese tome el control del movimiento
+              for (const id of touchStartX.keys()) {
+                dragTouchId = id;
+                break;
+              }
+            }
           }
         }
         canvas.addEventListener("touchstart", onTouchStart, {
@@ -920,10 +961,16 @@
           if (gameState !== "playing") return;
 
           // input horizontal
-          const moveAxis =
-            (keys["ArrowLeft"] || keys["a"] || keys["A"] ? -1 : 0) +
-            (keys["ArrowRight"] || keys["d"] || keys["D"] ? 1 : 0) +
-            (useTilt ? tiltX * 0.7 : 0);
+          const moveAxis = Math.max(
+            -1,
+            Math.min(
+              1,
+              (keys["ArrowLeft"] || keys["a"] || keys["A"] ? -1 : 0) +
+                (keys["ArrowRight"] || keys["d"] || keys["D"] ? 1 : 0) +
+                (useTilt ? tiltX * 0.7 : 0) +
+                touchAxis,
+            ),
+          );
 
           if (moveAxis < -0.15) {
             player.vx -= 0.8 * (Math.abs(moveAxis) + 0.2);
