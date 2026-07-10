@@ -346,9 +346,6 @@
         const mobileTip = document.getElementById("mobileTip");
         const sensorButton = document.getElementById("sensorButton");
         const helpBubble = document.getElementById("helpBubble");
-        if (helpBubble) {
-          setTimeout(() => helpBubble.classList.add("fade-out"), 2000);
-        }
         let W = window.innerWidth,
           H = window.innerHeight;
         // "viewW"/"viewH" son el ancho/alto REAL del mundo que entra en
@@ -373,6 +370,14 @@
         const needsOrientationPermission =
           typeof DeviceOrientationEvent !== "undefined" &&
           typeof DeviceOrientationEvent.requestPermission === "function";
+
+        if (helpBubble) {
+          if (isTouchDevice) {
+            helpBubble.classList.add("hidden");
+          } else {
+            setTimeout(() => helpBubble.classList.add("fade-out"), 2000);
+          }
+        }
 
         function resizeCanvas() {
           const dpr = Math.min(window.devicePixelRatio || 1, 2);
