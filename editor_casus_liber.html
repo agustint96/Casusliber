@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Editor de grilla — Casus Liber</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Playfair+Display:ital,wght@0,600;1,500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #fdfcf9;
+        --ink: #1c1c1c;
+        --ink-faint: #8a8a8a;
+        --pen-red: #b3261e;
+        --gold: #a9812f;
+        --line: #dcd7cc;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #efece4;
+        font-family: "Courier New", ui-monospace, monospace;
+        color: var(--ink);
+        padding: 24px;
+      }
+      h1 {
+        font-family: Georgia, serif;
+        font-style: italic;
+        font-size: 20px;
+        margin: 0 0 4px;
+      }
+      .sub {
+        color: var(--ink-faint);
+        font-size: 12px;
+        margin: 0 0 18px;
+        max-width: 760px;
+        line-height: 1.5;
+      }
+      .wrap {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+      }
+      .board {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+        padding: 10px 14px 14px;
+        width: fit-content;
+      }
+      .ruler {
+        display: flex;
+        color: var(--ink-faint);
+        font-size: 10px;
+        line-height: 1;
+        letter-spacing: 0;
+        white-space: pre;
+        margin-bottom: 2px;
+        user-select: none;
+      }
+      textarea {
+        display: block;
+        font-family: "Courier New", ui-monospace, monospace;
+        font-size: 16px;
+        line-height: 26px; /* == LINE_H del juego */
+        letter-spacing: 0;
+        color: var(--ink);
+        background: repeating-linear-gradient(
+          to bottom,
+          transparent 0px,
+          transparent 25px,
+          var(--line) 25px,
+          var(--line) 26px
+        );
+        border: none;
+        outline: none;
+        resize: none;
+        padding: 0;
+        width: 50ch; /* CHARS_PER_LINE */
+        white-space: pre;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        tab-size: 4;
+      }
+      .status {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--ink-faint);
+        margin-top: 8px;
+        border-top: 1px dashed var(--line);
+        padding-top: 8px;
+      }
+      .status b {
+        color: var(--ink);
+      }
+      .warn {
+        color: var(--pen-red) !important;
+        font-weight: bold;
+      }
+
+      .preview-wrap {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+        padding: 10px;
+        width: fit-content;
+      }
+      .preview-wrap h2 {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--gold);
+        margin: 0 0 8px;
+      }
+      canvas#preview {
+        display: block;
+        background: #fff;
+        max-width: 100%;
+      }
+
+      .side {
+        width: 340px;
+        max-width: 90vw;
+      }
+      .panel {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        padding: 14px;
+        margin-bottom: 14px;
+        font-size: 12.5px;
+        line-height: 1.6;
+      }
+      .panel h2 {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--gold);
+        margin: 0 0 8px;
+      }
+      .panel ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      button {
+        font-family: inherit;
+        background: var(--pen-red);
+        color: #fff;
+        border: none;
+        padding: 10px 14px;
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        cursor: pointer;
+        width: 100%;
+      }
+      button:hover {
+        background: #8f1f18;
+      }
+      button.secondary {
+        background: #444;
+      }
+      button.secondary:hover {
+        background: #222;
+      }
+
+      .levels {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .level-chip {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #fff;
+        border: 1px solid var(--line);
+        padding: 6px 8px;
+        font-size: 11px;
+        cursor: pointer;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .level-chip.active {
+        background: var(--pen-red);
+        color: #fff;
+        border-color: var(--pen-red);
+      }
+      .level-chip .del {
+        opacity: 0.6;
+        font-weight: bold;
+      }
+      .level-chip .del:hover {
+        opacity: 1;
+      }
+      .add-level {
+        background: #fff;
+        border: 1px dashed var(--gold);
+        color: var(--gold);
+        padding: 6px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        text-transform: none;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .row button {
+        flex: 1;
+      }
+      .copied {
+        color: var(--gold);
+        font-size: 11px;
+        min-height: 14px;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Editor de grilla — Casus Liber</h1>
+    <p class="sub">
+      Esta grilla usa <b>los mismos parámetros que el juego</b>: 50 caracteres
+      por línea, 24 líneas de contenido, fuente monoespaciada. La vista de la
+      derecha (el "canvas") dibuja exactamente lo que vas a ver adentro del
+      juego — mismas medidas, mismo tipo de letra, y la flecha de "siguiente"
+      ubicada donde realmente va a quedar. Cada nivel que armes acá es un
+      capítulo nuevo: cada uno se
+      <b>descarga como su propio archivo</b> (<code>nivel2.js</code>,
+      <code>nivel3.js</code>...). El <b>nivel 1 es fijo</b> y no se edita ni se
+      genera acá — este editor arma los capítulos siguientes. Decile con el
+      campo <b>"¿En qué nivel empieza este editor?"</b> cuál es el próximo
+      número libre en tu carpeta <code>niveles/</code>, para no pisar niveles
+      que ya tenés guardados. Guardalos en la carpeta <code>niveles/</code> al
+      lado de <code>index.html</code> y actualizá
+      <code>window.LEVEL_COUNT</code> en <code>index.html</code>
+      para que coincida con la cantidad total de niveles que tenés. Al tocar la
+      flecha derecha en el juego, se avanza al próximo nivel de esa lista.
+    </p>
+
+    <div class="wrap">
+      <div class="board">
+        <div style="margin-bottom: 14px">
+          <label
+            style="
+              display: block;
+              font-size: 11px;
+              color: var(--ink-faint);
+              margin-bottom: 4px;
+            "
+          >
+            Título de este nivel (opcional — si lo dejás vacío, no hay título y
+            esa fila queda como texto normal)
+          </label>
+          <input
+            type="text"
+            id="titleInput"
+            placeholder="(sin título)"
+            maxlength="50"
+            style="
+              width: 100%;
+              padding: 8px;
+              font-family: inherit;
+              font-size: 13px;
+              border: 1px solid var(--line);
+              box-sizing: border-box;
+            "
+          />
+        </div>
+        <div class="ruler" id="ruler"></div>
+        <textarea
+          id="editor"
+          spellcheck="false"
+          autocapitalize="off"
+          autocorrect="off"
+          wrap="off"
+          rows="24"
+        ></textarea>
+        <div class="status">
+          <span
+            >línea <b id="curLine">1</b>/24 · columna
+            <b id="curCol">1</b>/50</span
+          >
+          <span id="overflowMsg"></span>
+        </div>
+      </div>
+
+      <div class="preview-wrap">
+        <h2>Vista previa (igual que en el juego)</h2>
+        <canvas id="preview" width="720" height="820"></canvas>
+      </div>
+
+      <div class="side">
+        <div class="panel">
+          <h2>Numeración</h2>
+          <label
+            style="
+              display: block;
+              font-size: 11px;
+              color: var(--ink-faint);
+              margin-bottom: 6px;
+            "
+          >
+            ¿En qué nivel empieza este editor? (poné el próximo número que
+            todavía no existe en tu carpeta <code>niveles/</code>; si ya tenés
+            nivel1..nivel4, poné <b>5</b>)
+          </label>
+          <input
+            type="number"
+            id="levelOffsetInput"
+            min="2"
+            step="1"
+            value="2"
+            style="
+              width: 100%;
+              padding: 8px;
+              font-family: inherit;
+              font-size: 13px;
+              border: 1px solid var(--line);
+              box-sizing: border-box;
+            "
+          />
+        </div>
+
+        <div class="panel">
+          <h2>Niveles</h2>
+          <div class="levels" id="levelList"></div>
+          <button class="add-level" id="addLevelBtn" style="width: 100%">
+            + Nuevo nivel
+          </button>
+        </div>
+
+        <div class="panel">
+          <h2>Reglas de la grilla</h2>
+          <ul>
+            <li>
+              Máx. <b>50 caracteres</b> por línea (se corta lo que sobra al
+              exportar).
+            </li>
+            <li>
+              Máx. <b>24 líneas</b> de contenido (las 2 primeras filas del juego
+              ya están ocupadas por el título).
+            </li>
+            <li>
+              La tecla <b>Tab</b> está desactivada a propósito — usá espacio.
+            </li>
+            <li>
+              Los espacios cuentan como plataformas vacías: si querés un hueco,
+              dejá el espacio; si querés piso continuo, usá guiones o el
+              caracter que quieras.
+            </li>
+            <li>
+              La flecha derecha (siguiente) se ubica automáticamente en la
+              <b>última fila del nivel que tenga contenido</b> (la fila más
+              abajo que no esté vacía), pegada justo a la derecha del último
+              caracter de esa fila — así queda siempre en el final real del
+              nivel, sin importar si hay filas más anchas más arriba.
+            </li>
+            <li>
+              Si querés elegir vos la fila, escribí
+              <b>(*)</b> en esa línea (en cualquier lugar). Esa fila va a tener
+              la flecha, pegada al <b>margen derecho</b> de la grilla (no al
+              último caracter de esa línea) con el mismo margen de siempre; el
+              <code>(*)</code> no se dibuja ni es una plataforma, es solo una
+              marca.
+            </li>
+          </ul>
+        </div>
+
+        <div class="panel">
+          <h2>Descargar niveles</h2>
+          <p
+            style="
+              margin: 0 0 10px;
+              color: var(--ink-faint);
+              font-size: 11px;
+              line-height: 1.6;
+            "
+          >
+            Cada nivel se descarga como su propio archivo
+            (<code>nivel2.js</code>, <code>nivel3.js</code>...). El
+            <b>nivel 1 es fijo</b> y no se toca desde acá. Guardalos en la
+            carpeta <code>niveles/</code> junto a <code>index.html</code>, y
+            actualizá el número de <code>window.LEVEL_COUNT</code> en
+            <code>index.html</code> para que coincida con la cantidad total de
+            niveles que tenés ahí. También podés bajar uno solo con el ⬇ de cada
+            chip, arriba.
+          </p>
+          <button id="downloadAllBtn">Descargar todos los niveles</button>
+          <div class="copied" id="copiedMsg"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ---------- Mismos parámetros que index.html ----------
+      const CHARS_PER_LINE = 50;
+      const LINES_PER_COL = 26;
+      const MAX_LINES = LINES_PER_COL - 2; // 24 líneas de contenido (2 reservadas al título)
+      const FONT_SIZE = 14;
+      const CHAR_W = 9;
+      const PLATFORM_W = 7.5;
+      const PLATFORM_H = 4;
+      const LINE_H = 26;
+      const PAGE_TOP = 90;
+      const COL_LEFT_START = 60;
+      const NAV_GAP = 40;
+      const NAV_GAP_RIGHT = 90; // la flecha derecha se aleja bastante más del final del nivel
+      const ARROW_L = 14;
+      const NAV_BOX_W = ARROW_L * 2 + 4;
+      const NAV_BOX_H = ARROW_L + 6;
+      const OFFSET_X = 40; // margen extra para que la flecha izquierda entre en el canvas
+      const OFFSET_Y = 10;
+
+      const editor = document.getElementById("editor");
+      const ruler = document.getElementById("ruler");
+      const curLine = document.getElementById("curLine");
+      const curCol = document.getElementById("curCol");
+      const overflowMsg = document.getElementById("overflowMsg");
+      const downloadAllBtn = document.getElementById("downloadAllBtn");
+      const copiedMsg = document.getElementById("copiedMsg");
+      const levelListEl = document.getElementById("levelList");
+      const addLevelBtn = document.getElementById("addLevelBtn");
+      const canvas = document.getElementById("preview");
+      const ctx = canvas.getContext("2d");
+
+      // ---------- Estado: uno o más niveles, cada uno con su propio texto ----------
+      // El nivel 1 es FIJO (vive en niveles/nivel1.js, cargado directo por
+      // index.html) y nunca se edita ni se genera desde acá. Este editor solo
+      // administra los niveles siguientes. LEVEL_OFFSET es el número del
+      // PRIMER nivel que este editor va a generar (chip 0 = nivel
+      // LEVEL_OFFSET, chip 1 = LEVEL_OFFSET+1, etc.) — se controla con el
+      // input "¿En qué nivel empieza este editor?" de arriba, para que
+      // siempre coincida con los archivos que ya tenés guardados y nunca se
+      // repita/pise un window.LEVELS[N] que ya está en uso.
+      const levelOffsetInput = document.getElementById("levelOffsetInput");
+      let LEVEL_OFFSET = Math.max(2, parseInt(levelOffsetInput.value, 10) || 2);
+      levelOffsetInput.addEventListener("input", () => {
+        const v = parseInt(levelOffsetInput.value, 10);
+        LEVEL_OFFSET = Number.isFinite(v) && v >= 2 ? v : 2;
+        renderLevelList();
+      });
+
+      let levels = [""];
+      // Título opcional por nivel, paralelo a "levels". "" = sin título
+      // (esa fila queda como texto normal en el juego).
+      let levelTitles = [""];
+      let currentLevel = 0;
+      const titleInput = document.getElementById("titleInput");
+
+      function renderLevelList() {
+        levelListEl.innerHTML = "";
+        levels.forEach((_, idx) => {
+          const chip = document.createElement("div");
+          chip.className =
+            "level-chip" + (idx === currentLevel ? " active" : "");
+          const label = document.createElement("span");
+          label.textContent = `Nivel ${idx + LEVEL_OFFSET}`;
+          chip.appendChild(label);
+          const dl = document.createElement("span");
+          dl.className = "del";
+          dl.textContent = "⬇";
+          dl.title = `Descargar nivel${idx + LEVEL_OFFSET}.js`;
+          dl.addEventListener("click", (e) => {
+            e.stopPropagation();
+            downloadLevel(idx);
+          });
+          chip.appendChild(dl);
+          if (levels.length > 1) {
+            const del = document.createElement("span");
+            del.className = "del";
+            del.textContent = "×";
+            del.title = "Borrar este nivel";
+            del.addEventListener("click", (e) => {
+              e.stopPropagation();
+              deleteLevel(idx);
+            });
+            chip.appendChild(del);
+          }
+          chip.addEventListener("click", () => switchLevel(idx));
+          levelListEl.appendChild(chip);
+        });
+      }
+
+      function switchLevel(idx) {
+        if (idx === currentLevel) return;
+        levels[currentLevel] = editor.value; // guardar lo que estaba escribiendo
+        levelTitles[currentLevel] = titleInput.value;
+        currentLevel = idx;
+        editor.value = levels[currentLevel];
+        titleInput.value = levelTitles[currentLevel] || "";
+        renderLevelList();
+        updateStatus();
+        drawPreview();
+      }
+
+      function deleteLevel(idx) {
+        if (levels.length <= 1) return;
+        levels.splice(idx, 1);
+        levelTitles.splice(idx, 1);
+        if (currentLevel >= levels.length) currentLevel = levels.length - 1;
+        else if (currentLevel > idx) currentLevel--;
+        editor.value = levels[currentLevel];
+        titleInput.value = levelTitles[currentLevel] || "";
+        renderLevelList();
+        updateStatus();
+        drawPreview();
+      }
+
+      addLevelBtn.addEventListener("click", () => {
+        levels[currentLevel] = editor.value;
+        levelTitles[currentLevel] = titleInput.value;
+        levels.push("");
+        levelTitles.push("");
+        currentLevel = levels.length - 1;
+        editor.value = "";
+        titleInput.value = "";
+        renderLevelList();
+        updateStatus();
+        drawPreview();
+      });
+
+      editor.value = levels[currentLevel];
+      titleInput.value = levelTitles[currentLevel] || "";
+      titleInput.addEventListener("input", () => {
+        levelTitles[currentLevel] = titleInput.value;
+        drawPreview();
+      });
+
+      // regla de columnas (0,10,20,30,40,50)
+      function buildRuler() {
+        let s = "";
+        for (let i = 0; i < CHARS_PER_LINE; i++) {
+          s += i % 10 === 0 ? String(i / 10) : i % 5 === 0 ? "·" : " ";
+        }
+        ruler.textContent = s;
+      }
+      buildRuler();
+
+      // Tab desactivado (para que nadie caiga en la trampa de Word)
+      editor.addEventListener("keydown", (e) => {
+        if (e.key === "Tab") {
+          e.preventDefault();
+        }
+      });
+
+      function updateStatus() {
+        const value = editor.value;
+        const lines = value.split("\n");
+        const before = value.slice(0, editor.selectionStart).split("\n");
+        curLine.textContent = before.length;
+        curCol.textContent = before[before.length - 1].length + 1;
+
+        const overLines = lines.length > MAX_LINES;
+        const overCols = lines.some((l) => l.length > CHARS_PER_LINE);
+        if (overLines || overCols) {
+          overflowMsg.textContent =
+            (overLines ? `⚠ ${lines.length}/${MAX_LINES} líneas ` : "") +
+            (overCols ? "⚠ hay líneas de más de 50 caracteres" : "");
+          overflowMsg.classList.add("warn");
+        } else {
+          overflowMsg.textContent = "✓ dentro de la grilla";
+          overflowMsg.classList.remove("warn");
+        }
+      }
+
+      function onEdit() {
+        updateStatus();
+        levels[currentLevel] = editor.value;
+        drawPreview();
+      }
+      editor.addEventListener("input", onEdit);
+      editor.addEventListener("click", updateStatus);
+      editor.addEventListener("keyup", updateStatus);
+
+      // ---------- Construye las 26 líneas "de mundo" para un nivel, igual que
+      // wrapColumnLines() en index.html (fila 0 = título, fila 1 = blanco, resto
+      // = contenido del nivel, cortado a 50 caracteres). El nivel 1 es fijo
+      // y no se edita acá; estos son siempre niveles 2+, así que el título
+      // de fila 0 es el que haya elegido el creador (o "" si no puso ninguno).
+      // Además detecta el marcador "(*)" (que indica en qué fila va la
+      // flecha de "siguiente") y lo saca del texto para que no se dibuje
+      // como plataforma — es solo una marca, no un caracter jugable ----------
+      function buildWorldLines(levelText, levelTitle) {
+        const blocks = levelText.split("\n");
+        const lines = [];
+        let markerRow = null;
+        for (let i = 0; i < LINES_PER_COL; i++) {
+          if (i === 0) {
+            lines.push(levelTitle || "");
+          } else if (i === 1) {
+            lines.push("");
+          } else {
+            const raw = (blocks[i - 2] || "").slice(0, CHARS_PER_LINE);
+            if (markerRow === null && raw.indexOf("(*)") !== -1) {
+              markerRow = i;
+            }
+            lines.push(raw.replace(/\(\*\)/g, ""));
+          }
+        }
+        return { lines, markerRow };
+      }
+
+      // ---------- Dibuja el preview, replicando draw()/buildPage() del juego ----------
+      function drawPreview() {
+        const currentTitle = levelTitles[currentLevel] || "";
+        const { lines: worldLines, markerRow } = buildWorldLines(
+          editor.value,
+          currentTitle,
+        );
+        const hasTitle = !!currentTitle;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(OFFSET_X, OFFSET_Y);
+
+        // guías de renglón (igual que las líneas tenues del papel en el juego)
+        ctx.strokeStyle = "rgba(28,28,28,0.08)";
+        ctx.lineWidth = 1;
+        const worldWidth = COL_LEFT_START * 2 + CHARS_PER_LINE * CHAR_W;
+        for (let r = 0; r < LINES_PER_COL; r++) {
+          const y = PAGE_TOP + r * LINE_H + PLATFORM_H + 10;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(worldWidth, y);
+          ctx.stroke();
+        }
+
+        // letras / plataformas
+        ctx.textBaseline = "alphabetic";
+        for (let r = 0; r < LINES_PER_COL; r++) {
+          const line = worldLines[r];
+          const y = PAGE_TOP + r * LINE_H;
+          for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === " ") continue;
+            const x = COL_LEFT_START + i * CHAR_W;
+            const isTitle = r === 0 && hasTitle;
+            ctx.fillStyle = "#1c1c1c";
+            ctx.font = isTitle
+              ? `900 ${FONT_SIZE + 2}px 'Special Elite', monospace`
+              : `${FONT_SIZE}px 'Special Elite', monospace`;
+            ctx.fillText(
+              ch,
+              x + (CHAR_W - PLATFORM_W) / 2 - 2,
+              y + FONT_SIZE - 4,
+            );
+            ctx.fillStyle = "rgba(28,28,28,0.15)";
+            ctx.fillRect(
+              x + (CHAR_W - PLATFORM_W) / 2,
+              y + FONT_SIZE - 2,
+              PLATFORM_W,
+              2,
+            );
+          }
+        }
+
+        // ---- misma lógica que index.html ----
+        // Izquierda: se queda en la fila del medio del nivel, como siempre.
+        const midRowIndex = Math.round((LINES_PER_COL - 1) / 2);
+        const leftNavRowY = PAGE_TOP + midRowIndex * LINE_H;
+
+        // Derecha: si el nivel tiene un marcador "(*)", la flecha va en ESA
+        // fila, pegada al MARGEN DERECHO de la grilla (no al último
+        // caracter de esa fila). Si no hay marcador, sigue el
+        // comportamiento de siempre: la ÚLTIMA fila del nivel con
+        // contenido (buscando de abajo hacia arriba), pegada al último
+        // caracter real de esa fila. En cualquier caso se separa con el
+        // mismo margen (NAV_GAP_RIGHT).
+        function findLastContentRow(lines) {
+          for (let r = LINES_PER_COL - 1; r >= 0; r--) {
+            const line = lines[r] || "";
+            for (let i = 0; i < line.length; i++) {
+              if (line[i] !== " ") return r;
+            }
+          }
+          return midRowIndex;
+        }
+
+        const rightMarginX = COL_LEFT_START + CHARS_PER_LINE * CHAR_W;
+
+        let rightNavRowIndex, lastCharEndX;
+        if (markerRow !== null) {
+          rightNavRowIndex = markerRow;
+          lastCharEndX = rightMarginX; // ancla al margen derecho, no al texto
+        } else {
+          rightNavRowIndex = findLastContentRow(worldLines);
+          const rightNavRowText = worldLines[rightNavRowIndex] || "";
+          lastCharEndX = COL_LEFT_START;
+          for (let i = rightNavRowText.length - 1; i >= 0; i--) {
+            if (rightNavRowText[i] !== " ") {
+              lastCharEndX = COL_LEFT_START + (i + 1) * CHAR_W;
+              break;
+            }
+          }
+        }
+        const rightNavRowY = PAGE_TOP + rightNavRowIndex * LINE_H;
+
+        const rightWorldX = lastCharEndX + NAV_GAP_RIGHT;
+        const leftWorldX = COL_LEFT_START - NAV_GAP - NAV_BOX_W;
+
+        drawArrow(rightWorldX + NAV_BOX_W / 2, rightNavRowY, 1, true);
+        drawArrow(
+          leftWorldX + NAV_BOX_W / 2,
+          leftNavRowY,
+          -1,
+          true, // siempre hay un nivel anterior real: el nivel 1 fijo
+        );
+
+        ctx.restore();
+      }
+
+      function drawArrow(cx, cy, dir, active) {
+        ctx.save();
+        ctx.globalAlpha = active ? 1 : 0.22;
+        ctx.translate(cx, cy);
+        ctx.scale(dir, 1);
+        ctx.fillStyle = "#1c1c1c";
+        const L = ARROW_L;
+        ctx.beginPath();
+        ctx.moveTo(-L, -L * 0.07);
+        ctx.lineTo(L * 0.45, -L * 0.07);
+        ctx.lineTo(L * 0.45, -L * 0.32);
+        ctx.lineTo(L, 0);
+        ctx.lineTo(L * 0.45, L * 0.32);
+        ctx.lineTo(L * 0.45, L * 0.07);
+        ctx.lineTo(-L, L * 0.07);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // redibuja cuando la fuente "Special Elite" termina de cargar (si no, el
+      // primer dibujo cae en un monoespaciado genérico y desalinea el ancho)
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => drawPreview());
+      }
+
+      updateStatus();
+      renderLevelList();
+      drawPreview();
+
+      // ---------- Exportar / descargar ----------
+      function jsStringLiteral(s) {
+        // recorta a 50 columnas y escapa comillas/backslashes para el array JS
+        const clipped = s.slice(0, CHARS_PER_LINE);
+        return '"' + clipped.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+      }
+
+      // Genera el contenido de niveles/nivelN.js para un nivel puntual:
+      // un archivo chico que llena window.LEVELS[N-1] con su array de
+      // líneas y, si el creador eligió un título, también
+      // window.LEVEL_TITLES[N-1] con ese título (nivelN.js -> índice N-1,
+      // igual que hace index.html). Si no hay título, no se escribe esa
+      // línea y la fila queda como texto normal en el juego.
+      function levelToFileText(levelText, levelTitle, idx) {
+        let lines = levelText.split("\n");
+        if (lines.length > MAX_LINES) lines = lines.slice(0, MAX_LINES);
+        const body = lines.map((l) => "  " + jsStringLiteral(l)).join(",\n");
+        const targetIdx = idx + LEVEL_OFFSET - 1;
+        const titleLine = levelTitle
+          ? `window.LEVEL_TITLES[${targetIdx}] = ${jsStringLiteral(levelTitle)};\n`
+          : "";
+        return (
+          `// Nivel ${idx + LEVEL_OFFSET} — generado por el editor de grilla\n` +
+          `window.LEVELS[${targetIdx}] = [\n${body},\n];\n` +
+          titleLine
+        );
+      }
+
+      function downloadLevel(idx) {
+        levels[currentLevel] = editor.value; // asegurar que el nivel actual quede guardado
+        levelTitles[currentLevel] = titleInput.value;
+        const text = levelToFileText(levels[idx], levelTitles[idx], idx);
+        const blob = new Blob([text], { type: "text/javascript" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `nivel${idx + LEVEL_OFFSET}.js`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      downloadAllBtn.addEventListener("click", () => {
+        levels[currentLevel] = editor.value;
+        levelTitles[currentLevel] = titleInput.value;
+        levels.forEach((_, idx) => downloadLevel(idx));
+        copiedMsg.textContent =
+          `Descargados ${levels.length} archivo(s) — movelos a la carpeta niveles/` +
+          (levels.length > 1
+            ? " (si el navegador bloquea varias descargas juntas, aceptá el permiso o descargalos de a uno con el ⬇ de cada chip)"
+            : "");
+      });
+    </script>
+  </body>
+</html>
