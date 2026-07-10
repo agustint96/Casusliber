@@ -751,6 +751,11 @@
           facing: 1,
         };
 
+        // cuánto tiempo lleva quieto el jugador en el mismo lugar, para el
+        // efecto de "derretido" (mancha que se hunde tras la inactividad)
+        let idleFrames = 0;
+        const idleAnchor = { x: player.x, y: player.y };
+
         const GRAVITY = 0.25;
         const MOVE_SPEED = 3.0;
         const JUMP_VELOCITY = -10.5;
@@ -1089,6 +1094,22 @@
           trail.forEach((t) => (t.life -= 0.03));
           trail = trail.filter((t) => t.life > 0);
 
+          // seguimiento de inactividad: si está parado, en el suelo y casi
+          // sin moverse del mismo punto, suma frames quietos; en cuanto se
+          // mueve, salta o cambia de lugar, se reinicia
+          if (
+            player.onGround &&
+            Math.abs(player.vx) < 0.05 &&
+            Math.abs(player.x - idleAnchor.x) < 0.5 &&
+            Math.abs(player.y - idleAnchor.y) < 0.5
+          ) {
+            idleFrames++;
+          } else {
+            idleFrames = 0;
+            idleAnchor.x = player.x;
+            idleAnchor.y = player.y;
+          }
+
           // cámara: en desktop horizontal siempre centrada en la columna de
           // texto (como siempre); en celular (zoom) sigue al jugador para
           // los costados. vertical, en ambos casos, sigue al jugador a
@@ -1240,17 +1261,90 @@
             ctx.fill();
           }
 
-          // jugador (gota de tinta)
+          // jugador (mancha de tinta): un blob orgánico cuyo contorno muta
+          // levemente en el tiempo, en vez de un círculo perfecto y estático
           ctx.save();
           ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
-          ctx.fillStyle = "#1c1c1c";
+
+          const inkT = performance.now() * 0.0007; // reloj de la mutación (lento)
+          const inkSpeed = Math.min(Math.hypot(player.vx, player.vy) / 8, 1);
+          const inkBaseR = 5;
+          const inkPts = 9;
+          const stretchX = player.facing >= 0 ? 1.04 : 0.96;
+
+          // "derretido" por inactividad: recién arranca después de un rato
+          // quieto, y crece muy gradualmente — la mancha se hunde y se
+          // ensancha por abajo, como tinta real asentándose en el papel
+          const idleThreshold = 90; // ~1.5s a 60fps antes de empezar
+          const meltRampFrames = 260; // ~4.3s hasta el derretido máximo
+          const melt = Math.max(
+            0,
+            Math.min(1, (idleFrames - idleThreshold) / meltRampFrames),
+          );
+
+          const blob = [];
+          for (let i = 0; i < inkPts; i++) {
+            const a = (i / inkPts) * Math.PI * 2;
+            // tres frecuencias superpuestas = borde irregular de mancha,
+            // no un engranaje perfecto; se mueve muy lento y suave
+            const wob =
+              Math.sin(a * 3 + inkT * 1.3) * 0.5 +
+              Math.sin(a * 5 - inkT * 0.85) * 0.28 +
+              Math.sin(a * 2 + inkT * 0.4) * 0.35;
+            const rBase = inkBaseR + wob * (0.85 + inkSpeed * 0.5);
+            const sinA = Math.sin(a),
+              cosA = Math.cos(a);
+            // la mitad de abajo se estira, la de arriba se achata
+            const bottomStretch = sinA > 0 ? 1 + melt * 1.1 : 1;
+            const topFlatten = sinA < 0 ? 1 - melt * 0.4 : 1;
+            const px = cosA * rBase * stretchX * (1 - melt * 0.15);
+            const py =
+              sinA * rBase * 0.92 * bottomStretch * topFlatten + 1 + melt * 2.5;
+            blob.push([px, py]);
+          }
+
           ctx.beginPath();
-          ctx.ellipse(0, 1, 4.5, 5, 0, 0, Math.PI * 2);
+          ctx.moveTo(
+            (blob[0][0] + blob[inkPts - 1][0]) / 2,
+            (blob[0][1] + blob[inkPts - 1][1]) / 2,
+          );
+          for (let i = 0; i < inkPts; i++) {
+            const cur = blob[i];
+            const next = blob[(i + 1) % inkPts];
+            ctx.quadraticCurveTo(
+              cur[0],
+              cur[1],
+              (cur[0] + next[0]) / 2,
+              (cur[1] + next[1]) / 2,
+            );
+          }
+          ctx.closePath();
+
+          // degradado sutil (gris oscuro -> negro) para dar volumen de tinta,
+          // sin usar ningún tono rosado ni dorado
+          const inkGrad = ctx.createRadialGradient(
+            -1,
+            -1.5,
+            0.5,
+            0,
+            0,
+            inkBaseR + 2,
+          );
+          inkGrad.addColorStop(0, "#3a3a3a");
+          inkGrad.addColorStop(0.55, "#1a1a1a");
+          inkGrad.addColorStop(1, "#0a0a0a");
+          ctx.fillStyle = inkGrad;
           ctx.fill();
-          ctx.fillStyle = "#a9812f";
+
+          // brillo húmedo muy tenue (blanco, no color) para dar sensación
+          // de tinta fresca sin restarle sobriedad al dibujo
+          ctx.globalAlpha = 0.12;
+          ctx.fillStyle = "#ffffff";
           ctx.beginPath();
-          ctx.arc(player.facing * 1.6, -1.4, 1.2, 0, Math.PI * 2);
+          ctx.ellipse(-1.4, -1.8, 1.3, 0.8, -0.4, 0, Math.PI * 2);
           ctx.fill();
+          ctx.globalAlpha = 1;
+
           ctx.restore();
 
           ctx.restore();
