@@ -369,6 +369,16 @@
         // se veían en celulares). Mínimo matemático real: ~594. Se deja
         // con un margen chico (620) para no recortarlas justo en el borde.
         const MIN_VISIBLE_WIDTH = 620; // antes 480 (muy chico, tapaba las flechas) / 660 (original)
+        // -------------------- ZOOM en pantallas angostas (celular) --------------------
+        // En vez de achicar todo para que entre la columna completa (450px)
+        // de una sola vez, en celulares la cámara se acerca al personaje y
+        // lo sigue horizontalmente (como cualquier plataformero), mostrando
+        // solo esta franja de "mundo" en vez de los 620px de siempre. Así el
+        // personaje y las letras se ven bastante más grandes. NARROW_BREAKPOINT
+        // usa el mismo corte que ya usa el CSS (@media max-width:700px).
+        const NARROW_BREAKPOINT = 700;
+        const MOBILE_VISIBLE_WIDTH = 460; // más chico = más zoom
+        let isNarrowScreen = false;
         let tiltX = 0;
         let useTilt = false;
         const isTouchDevice =
@@ -391,7 +401,15 @@
           const rect = canvas.getBoundingClientRect();
           W = rect.width;
           H = rect.height;
-          GAME_SCALE = Math.min(1, W / MIN_VISIBLE_WIDTH);
+          isNarrowScreen = W < NARROW_BREAKPOINT;
+          if (isNarrowScreen) {
+            // en celular no hace falta mostrar la columna entera: la cámara
+            // va a seguir al personaje, así que acá SÍ se permite escalar
+            // por encima de 1 (zoom real, no solo "no achicar")
+            GAME_SCALE = W / MOBILE_VISIBLE_WIDTH;
+          } else {
+            GAME_SCALE = Math.min(1, W / MIN_VISIBLE_WIDTH);
+          }
           viewW = W / GAME_SCALE;
           viewH = H / GAME_SCALE;
           canvas.width = Math.round(W * dpr);
@@ -841,7 +859,7 @@
 
         let lastLandedWordId = null; // última "palabra" (1+ caracteres seguidos, un caracter solo también cuenta) donde aterrizó el jugador
 
-        let camX = getColCenterX() - viewW / 2,
+        let camX = getTargetCamX(),
           camY = player.y - viewH / 2 + player.h / 2;
         let gameState = "playing"; // playing
         let trail = [];
@@ -875,7 +893,7 @@
           pageNum = idx + 1;
           if (hudPage) hudPage.textContent = pageNum;
           resetPlayerToPageStart();
-          camX = getColCenterX() - viewW / 2;
+          camX = getTargetCamX();
           camY = player.y - viewH / 2 + player.h / 2;
           navCooldown = 45;
           if (hudMsg) {
@@ -886,6 +904,18 @@
 
         function getColCenterX() {
           return COL_LEFT_START + (CHARS_PER_LINE * CHAR_W) / 2;
+        }
+
+        // en desktop la cámara horizontal queda fija mostrando la columna
+        // entera (como siempre); en celular, con el zoom activado, en vez de
+        // eso sigue al personaje, sin salirse de la zona jugable (los mismos
+        // límites que usa la caída al vacío, -80 / worldWidth+80)
+        function getTargetCamX() {
+          if (!isNarrowScreen) return getColCenterX() - viewW / 2;
+          const minCamX = -80;
+          const maxCamX = Math.max(minCamX, page.worldWidth + 80 - viewW);
+          const raw = player.x + player.w / 2 - viewW / 2;
+          return Math.min(Math.max(raw, minCamX), maxCamX);
         }
 
         // Se llama al tocar la flecha derecha en el último nivel
@@ -1059,10 +1089,12 @@
           trail.forEach((t) => (t.life -= 0.03));
           trail = trail.filter((t) => t.life > 0);
 
-          // cámara: horizontal siempre centrada en la columna de texto,
-          // vertical sigue al jugador a medida que baja
+          // cámara: en desktop horizontal siempre centrada en la columna de
+          // texto (como siempre); en celular (zoom) sigue al jugador para
+          // los costados. vertical, en ambos casos, sigue al jugador a
+          // medida que baja
           const targetCamY = player.y - viewH / 2 + player.h / 2;
-          camX += (getColCenterX() - viewW / 2 - camX) * 0.15;
+          camX += (getTargetCamX() - camX) * 0.15;
           camY += (targetCamY - camY) * 0.12;
 
           // cajas de navegación (izquierda = capítulo anterior, derecha = siguiente)
@@ -1126,7 +1158,7 @@
             const hudDeaths = document.getElementById("hudDeaths");
             if (hudDeaths) hudDeaths.textContent = deaths;
             resetPlayerToPageStart();
-            camX = getColCenterX() - viewW / 2;
+            camX = getTargetCamX();
             camY = player.y - viewH / 2 + player.h / 2;
             if (hudMsg) {
               hudMsg.textContent = "caíste en el blanco...";
