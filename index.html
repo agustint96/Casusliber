@@ -277,7 +277,7 @@
     <div class="fade-overlay" id="fadeOverlay"></div>
 
     <div class="mobile-tip" id="mobileTip">
-      Inclina el teléfono para moverte
+      Inclina para moverte · deslizá hacia arriba para saltar
     </div>
     <button class="btn mobile-btn hidden" id="sensorButton" type="button">
       Activar giroscopio
@@ -337,6 +337,19 @@
         const sensorButton = document.getElementById("sensorButton");
         let W = window.innerWidth,
           H = window.innerHeight;
+        // "viewW"/"viewH" son el ancho/alto REAL del mundo que entra en
+        // pantalla (en unidades de juego). En desktop coinciden con W/H
+        // (GAME_SCALE = 1, todo queda exactamente como estaba). En
+        // pantallas angostas (celular, tablet en vertical) se activa un
+        // GAME_SCALE < 1: en vez de recortar el texto por los costados,
+        // la cámara se "aleja" lo justo para que siempre se vea el mismo
+        // ancho de página (columna + flechas de navegación) que en
+        // escritorio, solo que todo un poco más chico. Así el celular
+        // muestra el equivalente exacto del canvas de escritorio.
+        let viewW = W,
+          viewH = H;
+        let GAME_SCALE = 1;
+        const MIN_VISIBLE_WIDTH = 660; // ancho mínimo de "papel" que siempre debe entrar en pantalla
         let tiltX = 0;
         let useTilt = false;
         const isTouchDevice =
@@ -350,11 +363,14 @@
           const dpr = Math.min(window.devicePixelRatio || 1, 2);
           W = window.innerWidth;
           H = window.innerHeight;
+          GAME_SCALE = Math.min(1, W / MIN_VISIBLE_WIDTH);
+          viewW = W / GAME_SCALE;
+          viewH = H / GAME_SCALE;
           canvas.width = Math.round(W * dpr);
           canvas.height = Math.round(H * dpr);
           canvas.style.width = `${W}px`;
           canvas.style.height = `${H}px`;
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.setTransform(dpr * GAME_SCALE, 0, 0, dpr * GAME_SCALE, 0, 0);
         }
         resizeCanvas();
         window.addEventListener("resize", resizeCanvas);
@@ -387,7 +403,8 @@
                 if (response === "granted") {
                   useTilt = true;
                   updateTiltUi();
-                  mobileTip.textContent = "Inclina el móvil para moverte";
+                  mobileTip.textContent =
+                    "Inclina para moverte · deslizá hacia arriba para saltar";
                 } else {
                   sensorButton.textContent = "Activar giroscopio";
                   mobileTip.textContent = "No se pudo activar el giroscopio";
@@ -698,6 +715,45 @@
           setKeycapPressed(e.key, false);
         });
 
+        // ---------- Control táctil: deslizar el dedo hacia arriba en
+        // cualquier parte del canvas = saltar (además de la inclinación
+        // del celular, que ya mueve al personaje a los costados) ----------
+        const SWIPE_JUMP_PX = 26; // desplazamiento vertical mínimo para contar como "deslizar hacia arriba"
+        const TOUCH_JUMP_BUFFER_FRAMES = 10; // si el deslizamiento llega un poco antes de tocar el piso, igual salta al aterrizar
+        const touchStartY = new Map(); // por cada dedo (id de touch), dónde empezó el gesto
+        const touchJumpedAlready = new Map(); // para no disparar más de un salto por gesto/dedo
+        let touchJumpBuffer = 0;
+
+        function onTouchStart(e) {
+          for (const t of e.changedTouches) {
+            touchStartY.set(t.identifier, t.clientY);
+            touchJumpedAlready.set(t.identifier, false);
+          }
+        }
+        function onTouchMove(e) {
+          for (const t of e.changedTouches) {
+            if (touchJumpedAlready.get(t.identifier)) continue;
+            const startY = touchStartY.get(t.identifier);
+            if (startY === undefined) continue;
+            if (startY - t.clientY > SWIPE_JUMP_PX) {
+              touchJumpedAlready.set(t.identifier, true);
+              touchJumpBuffer = TOUCH_JUMP_BUFFER_FRAMES;
+            }
+          }
+        }
+        function onTouchEnd(e) {
+          for (const t of e.changedTouches) {
+            touchStartY.delete(t.identifier);
+            touchJumpedAlready.delete(t.identifier);
+          }
+        }
+        canvas.addEventListener("touchstart", onTouchStart, {
+          passive: true,
+        });
+        canvas.addEventListener("touchmove", onTouchMove, { passive: true });
+        canvas.addEventListener("touchend", onTouchEnd, { passive: true });
+        canvas.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
         // enciende/apaga el efecto visual de "tecla presionada" en el
         // globito de instrucciones, siguiendo lo que realmente toca el jugador
         function setKeycapPressed(rawKey, isPressed) {
@@ -720,8 +776,8 @@
 
         let lastLandedWordId = null; // última "palabra" (1+ caracteres seguidos, un caracter solo también cuenta) donde aterrizó el jugador
 
-        let camX = getColCenterX() - W / 2,
-          camY = player.y - H / 2 + player.h / 2;
+        let camX = getColCenterX() - viewW / 2,
+          camY = player.y - viewH / 2 + player.h / 2;
         let gameState = "playing"; // playing
         let trail = [];
         let navCooldown = 0;
@@ -754,8 +810,8 @@
           pageNum = idx + 1;
           if (hudPage) hudPage.textContent = pageNum;
           resetPlayerToPageStart();
-          camX = getColCenterX() - W / 2;
-          camY = player.y - H / 2 + player.h / 2;
+          camX = getColCenterX() - viewW / 2;
+          camY = player.y - viewH / 2 + player.h / 2;
           navCooldown = 45;
           if (hudMsg) {
             hudMsg.textContent = msg;
@@ -854,12 +910,18 @@
           player.vx = Math.max(-MOVE_SPEED, Math.min(MOVE_SPEED, player.vx));
           player.vx *= FRICTION;
 
+          if (touchJumpBuffer > 0) touchJumpBuffer--;
           if (
-            (keys[" "] || keys["ArrowUp"] || keys["w"] || keys["W"]) &&
+            (keys[" "] ||
+              keys["ArrowUp"] ||
+              keys["w"] ||
+              keys["W"] ||
+              touchJumpBuffer > 0) &&
             player.onGround
           ) {
             player.vy = JUMP_VELOCITY;
             player.onGround = false;
+            touchJumpBuffer = 0;
           }
 
           player.vy += GRAVITY;
@@ -926,8 +988,8 @@
 
           // cámara: horizontal siempre centrada en la columna de texto,
           // vertical sigue al jugador a medida que baja
-          const targetCamY = player.y - H / 2 + player.h / 2;
-          camX += (getColCenterX() - W / 2 - camX) * 0.15;
+          const targetCamY = player.y - viewH / 2 + player.h / 2;
+          camX += (getColCenterX() - viewW / 2 - camX) * 0.15;
           camY += (targetCamY - camY) * 0.12;
 
           // cajas de navegación (izquierda = capítulo anterior, derecha = siguiente)
@@ -991,8 +1053,8 @@
             const hudDeaths = document.getElementById("hudDeaths");
             if (hudDeaths) hudDeaths.textContent = deaths;
             resetPlayerToPageStart();
-            camX = getColCenterX() - W / 2;
-            camY = player.y - H / 2 + player.h / 2;
+            camX = getColCenterX() - viewW / 2;
+            camY = player.y - viewH / 2 + player.h / 2;
             if (hudMsg) {
               hudMsg.textContent = "caíste en el blanco...";
               setTimeout(() => {
@@ -1006,13 +1068,13 @@
         // ---------- Dibujo ----------
         function drawPaperTexture() {
           ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, W, H);
+          ctx.fillRect(0, 0, viewW, viewH);
           ctx.save();
           ctx.globalAlpha = 0.025;
           for (let i = 0; i < 120; i++) {
             ctx.fillStyle = "#000";
-            const rx = Math.random() * W,
-              ry = Math.random() * H,
+            const rx = Math.random() * viewW,
+              ry = Math.random() * viewH,
               rr = Math.random() * 1.4;
             ctx.beginPath();
             ctx.arc(rx, ry, rr, 0, Math.PI * 2);
