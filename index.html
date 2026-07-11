@@ -320,7 +320,12 @@
       // en el editor. El nivel 1 siempre usa "Casus liber" fijo, sin
       // importar lo que haya acá.
       window.LEVEL_TITLES = [];
-      window.LEVEL_COUNT = 16; // <- cambiá este número al agregar/quitar niveles numerados
+      // Dirección de crecimiento por nivel: lo llena nivelN.js con
+      // window.LEVEL_GROWS_UP[N-1] = true si el creador tildó "este nivel
+      // crece hacia arriba" en el editor. Sin esto (false/undefined), el
+      // nivel se arma como siempre: el primer renglón arriba, bajando.
+      window.LEVEL_GROWS_UP = [];
+      window.LEVEL_COUNT = 17; // <- cambiá este número al agregar/quitar niveles numerados
       for (let n = 1; n <= window.LEVEL_COUNT; n++) {
         document.write('<script src="niveles/nivel' + n + '.js"><\/script>');
       }
@@ -507,9 +512,10 @@
           const lines = [getLevelTitle(levelIdx), ""];
           for (let i = 0; i < blocks.length; i++) {
             const raw = blocks[i] || "";
-            // "(*)" es solo una marca (indica en qué fila va la flecha de
-            // "siguiente"), nunca una plataforma real: se saca del texto
-            lines.push(raw.replace(/\(\*\)/g, ""));
+            // "(*)" (flecha de "siguiente") y "(^)" (aparición del
+            // personaje) son solo marcas, nunca una plataforma real: se
+            // sacan del texto
+            lines.push(raw.replace(/\(\*\)/g, "").replace(/\(\^\)/g, ""));
           }
           return lines;
         }
@@ -530,6 +536,28 @@
             if (idx !== -1) return { row: i + 2, col: idx };
           }
           return null;
+        }
+
+        // Igual que getNavMarkerPos, pero para "(^)": el marcador que dice
+        // dónde aparece el personaje al arrancar el nivel. Si no está,
+        // devuelve null y se usa el default (primer renglón, borde
+        // izquierdo).
+        function getSpawnMarkerPos(levelIdx) {
+          const blocks = LEVELS[levelIdx] || [];
+          for (let i = 0; i < blocks.length; i++) {
+            const raw = blocks[i] || "";
+            const idx = raw.indexOf("(^)");
+            if (idx !== -1) return { row: i + 2, col: idx };
+          }
+          return null;
+        }
+
+        // ¿Este nivel crece hacia arriba? (el renglón 0 del array queda
+        // ABAJO de la pantalla y los siguientes se apilan hacia arriba, en
+        // vez de bajar como es lo normal)
+        function levelGrowsUp(levelIdx) {
+          const flags = window.LEVEL_GROWS_UP || [];
+          return !!flags[levelIdx];
         }
 
         // ---------- Generación de una página (nivel) ----------
@@ -556,13 +584,26 @@
             ...columns.flatMap((col) => col.map((line) => line.length)),
           );
 
+          // ¿este nivel crece hacia arriba? si es así, el renglón de
+          // índice 0 (el primero del array, con el título) queda ABAJO de
+          // la pantalla y los siguientes se apilan subiendo, en vez del
+          // orden normal (renglón 0 arriba, bajando). Se centraliza acá
+          // para que TODO lo que depende de "en qué Y cae el renglón r"
+          // (plataformas, flechas de navegación, aparición del personaje)
+          // use siempre la misma cuenta.
+          const growsUp = levelGrowsUp(getLevelIndex(pageIdx));
+          function rowY(r) {
+            const rr = growsUp ? linesPerCol - 1 - r : r;
+            return PAGE_TOP + rr * LINE_H;
+          }
+
           const platforms = [];
 
           for (let c = 0; c < NUM_COLS; c++) {
             const colX = COL_LEFT_START + c * (charsPerLine * CHAR_W + COL_GAP);
             for (let r = 0; r < linesPerCol; r++) {
               const line = columns[c][r] || "";
-              const y = PAGE_TOP + r * LINE_H;
+              const y = rowY(r);
 
               // "palabra" = uno o más caracteres no-espacio seguidos (un
               // caracter solo también cuenta como palabra); se usa para
@@ -618,36 +659,32 @@
           const worldBottom =
             PAGE_TOP + (linesPerCol - 1) * LINE_H + LINE_H * 1.6; // debajo de esto = vacío/muerte
 
-          // La flecha IZQUIERDA (capítulo anterior) va SIEMPRE a la altura
-          // de la primera fila con contenido de la primera columna (la fila
-          // donde cae el personaje al arrancar el nivel), pegada al borde
-          // izquierdo de la columna. Así queda siempre a la izquierda del
-          // primer carácter, salvo que se fuerce NAV_ROW_INDEX a otro valor.
+          // Aparición del personaje: si el nivel tiene un marcador "(^)"
+          // en el editor, arranca EXACTAMENTE ahí (a esa altura, un poco
+          // arriba para que caiga sobre esa letra, y en esa columna). Si
+          // no hay marcador, sigue el comportamiento de siempre: el
+          // renglón 0 del array (el del título), pegado al borde
+          // izquierdo — que con "growsUp" tildado ya cae abajo de la
+          // pantalla, no arriba, gracias a rowY().
+          const spawnMarkerPos = getSpawnMarkerPos(getLevelIndex(pageIdx));
+          const spawnRowIndex =
+            spawnMarkerPos !== null ? spawnMarkerPos.row : 0;
+          const spawnColIndex =
+            spawnMarkerPos !== null ? spawnMarkerPos.col : 0;
+          const startX = COL_LEFT_START + spawnColIndex * CHAR_W;
+          const startY = rowY(spawnRowIndex) - 20;
+
+          // La flecha IZQUIERDA (capítulo anterior) va SIEMPRE pegada,
+          // a la izquierda, de donde aparece el personaje: misma fila y
+          // misma columna que el spawn (con o sin marcador "(^)"), sin
+          // importar el contenido del nivel. Se puede forzar otra fila
+          // con NAV_ROW_INDEX si hiciera falta.
           const midRowIndex = Math.round((linesPerCol - 1) / 2);
-          function findFirstContentRow() {
-            for (let r = 0; r < linesPerCol; r++) {
-              const line = columns[0][r] || "";
-              for (let i = 0; i < line.length; i++) {
-                if (line[i] !== " ") return r;
-              }
-            }
-            // nivel completamente vacío (ni siquiera el título): fila del medio
-            return midRowIndex;
-          }
           const navRowIndex =
-            NAV_ROW_INDEX !== null ? NAV_ROW_INDEX : findFirstContentRow();
-          const navRowY = PAGE_TOP + navRowIndex * LINE_H;
-          // x real del primer carácter de esa fila (igual que la flecha
-          // derecha hace con el último carácter de la suya); si la fila
-          // está vacía, se queda pegada al inicio de la columna
-          const navRowFirstCharText = columns[0][navRowIndex] || "";
-          let navRowFirstCharStartX = COL_LEFT_START;
-          for (let i = 0; i < navRowFirstCharText.length; i++) {
-            if (navRowFirstCharText[i] !== " ") {
-              navRowFirstCharStartX = COL_LEFT_START + i * CHAR_W;
-              break;
-            }
-          }
+            NAV_ROW_INDEX !== null ? NAV_ROW_INDEX : spawnRowIndex;
+          const navRowY = rowY(navRowIndex);
+          const navRowFirstCharStartX =
+            NAV_ROW_INDEX !== null ? COL_LEFT_START : startX;
 
           // La flecha DERECHA (siguiente): si el nivel tiene un marcador
           // "(*)" en el editor, va en ESA fila, pegada JUSTO A LA DERECHA
@@ -692,7 +729,7 @@
               }
             }
           }
-          const rightNavRowY = PAGE_TOP + rightNavRowIndex * LINE_H;
+          const rightNavRowY = rowY(rightNavRowIndex);
 
           return {
             columns,
@@ -707,8 +744,9 @@
             worldBottom,
             linesPerCol,
             charsPerLine,
-            startX: COL_LEFT_START + 0 * CHAR_W,
-            startY: PAGE_TOP - 20,
+            growsUp,
+            startX,
+            startY,
           };
         }
 

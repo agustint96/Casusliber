@@ -320,6 +320,12 @@
             <input type="checkbox" id="isFinal" />
             <label for="isFinal">Es el nivel final (nivelfinal.js)</label>
           </div>
+          <div class="field checkfield">
+            <input type="checkbox" id="growsUp" />
+            <label for="growsUp"
+              >Este nivel crece hacia arriba (el renglón 1 queda abajo)</label
+            >
+          </div>
           <div class="field">
             <label for="levelTitle">Título del nivel (opcional)</label>
             <input
@@ -365,6 +371,14 @@
           podés usar el botón <b>▶</b> de la izquierda, que la pone al final del
           texto de ese renglón). Sin marca, el juego la calcula sola en el
           último renglón con contenido.
+        </p>
+        <p class="help">
+          Para marcar <b>dónde aparece el personaje</b> al arrancar el nivel,
+          escribí <b>&lt;-</b> justo a la derecha del carácter donde querés que
+          caiga (también se borra solo; podés usar el botón <b>★</b> de la
+          izquierda, que lo pone al principio de ese renglón). Sin marca,
+          aparece arriba a la izquierda del primer renglón (o abajo a la
+          izquierda si tildaste "crece hacia arriba").
         </p>
         <div class="grid-editor">
           <div class="gutter" id="gutter"></div>
@@ -420,6 +434,9 @@
 
         let navRow = null; // fila (0-indexada) marcada con (*)
         let navCol = null; // columna exacta (cantidad de caracteres antes del marcador)
+        let spawnRow = null; // fila (0-indexada) marcada con (^) (aparición del personaje)
+        let spawnCol = null; // columna exacta (cantidad de caracteres antes del marcador)
+        const growsUpInput = document.getElementById("growsUp");
 
         // Cantidad mínima de renglones que se muestran como "lienzo" vacío
         // (coincide con el atributo rows del textarea), para que el gutter
@@ -454,10 +471,12 @@
               if (line[i] !== " ") count++;
             }
             const marked = navRow === r;
-            html += `<div class="gutter-row${marked ? " row-marked" : ""}" data-row="${r}">
+            const spawnMarked = spawnRow === r;
+            html += `<div class="gutter-row${marked || spawnMarked ? " row-marked" : ""}" data-row="${r}">
               <span class="rownum">${r + 1}</span>
               <span class="rowcount">${count}</span>
-              <button class="flagbtn${marked ? " active" : ""}" data-row="${r}" title="Marcar como salida (flecha →)">▶</button>
+              <button class="flagbtn${spawnMarked ? " active" : ""}" data-row="${r}" data-flag="spawn" title="Marcar como aparición inicial del personaje">★</button>
+              <button class="flagbtn${marked ? " active" : ""}" data-row="${r}" data-flag="nav" title="Marcar como salida (flecha →)">▶</button>
             </div>`;
           }
           gutterEl.innerHTML = html;
@@ -505,15 +524,45 @@
           return false;
         }
 
+        // Igual que checkArrowMarker, pero busca "<-" (dos caracteres
+        // consecutivos) y marca dónde aparece el personaje al arrancar el
+        // nivel, en vez de la flecha de salida.
+        function checkSpawnMarker() {
+          const lines = gridArea.value.split(/\r\n|\r|\n/);
+          for (let r = 0; r < lines.length; r++) {
+            const idx = lines[r].indexOf("<-");
+            if (idx !== -1) {
+              spawnRow = r;
+              spawnCol = idx;
+              lines[r] = lines[r].slice(0, idx) + lines[r].slice(idx + 2);
+              gridArea.value = lines.join("\n");
+              let pos = 0;
+              for (let i = 0; i < r; i++) pos += lines[i].length + 1;
+              pos += idx;
+              gridArea.selectionStart = gridArea.selectionEnd = pos;
+              return true;
+            }
+          }
+          return false;
+        }
+
         function lastContentCol(line) {
           let end = line.length;
           while (end > 0 && line[end - 1] === " ") end--;
           return end;
         }
 
+        function firstContentCol(line) {
+          for (let i = 0; i < line.length; i++) {
+            if (line[i] !== " ") return i;
+          }
+          return 0;
+        }
+
         // ---------- eventos ----------
         gridArea.addEventListener("input", () => {
           checkArrowMarker();
+          checkSpawnMarker();
           syncGrid();
         });
 
@@ -526,12 +575,22 @@
           if (!btn) return;
           const r = Number(btn.dataset.row);
           const lines = gridArea.value.split(/\r\n|\r|\n/);
-          if (navRow === r) {
-            navRow = null;
-            navCol = null;
+          if (btn.dataset.flag === "spawn") {
+            if (spawnRow === r) {
+              spawnRow = null;
+              spawnCol = null;
+            } else {
+              spawnRow = r;
+              spawnCol = firstContentCol(lines[r] || ""); // por defecto: justo antes del primer carácter de la fila
+            }
           } else {
-            navRow = r;
-            navCol = lastContentCol(lines[r] || ""); // por defecto: justo después del último carácter de la fila
+            if (navRow === r) {
+              navRow = null;
+              navCol = null;
+            } else {
+              navRow = r;
+              navCol = lastContentCol(lines[r] || ""); // por defecto: justo después del último carácter de la fila
+            }
           }
           syncGrid();
         });
@@ -541,13 +600,17 @@
           gridArea.value = "";
           navRow = null;
           navCol = null;
+          spawnRow = null;
+          spawnCol = null;
           levelTitleInput.value = "";
+          growsUpInput.checked = false;
           syncGrid();
         });
 
         levelTitleInput.addEventListener("input", renderPreview);
         levelNumInput.addEventListener("input", renderPreview);
         isFinalInput.addEventListener("change", renderPreview);
+        growsUpInput.addEventListener("change", renderPreview);
 
         function updateAllStats() {
           const lines = getLines();
@@ -571,7 +634,15 @@
           } else {
             navText = `flecha de salida forzada en el renglón ${navRow + 1}, después del carácter ${navCol}`;
           }
-          statsLine.innerHTML = `<b>${nonEmptyRows}</b> renglones con texto · <b>${totalChars}</b> caracteres · ancho máximo <b>${maxCols}</b> columnas · ${navText}`;
+          let spawnText;
+          if (spawnRow === null) {
+            spawnText = growsUpInput.checked
+              ? "aparición: default (abajo a la izquierda)"
+              : "aparición: default (arriba a la izquierda)";
+          } else {
+            spawnText = `aparición forzada en el renglón ${spawnRow + 1}, columna ${spawnCol}`;
+          }
+          statsLine.innerHTML = `<b>${nonEmptyRows}</b> renglones con texto · <b>${totalChars}</b> caracteres · ancho máximo <b>${maxCols}</b> columnas · ${navText} · ${spawnText}`;
         }
 
         // Inserta el literal "(*)" en la columna "col" de una línea (rellenando
@@ -579,10 +650,10 @@
         // exactamente el formato que el juego espera: al sacarle "(*)", el
         // texto vuelve a quedar igual, y la posición donde estaba la marca
         // es donde se ancla la flecha.
-        function insertMarker(line, col) {
+        function insertMarker(line, col, marker) {
           let base = line;
           while (base.length < col) base += " ";
-          return base.slice(0, col) + "(*)" + base.slice(col);
+          return base.slice(0, col) + marker + base.slice(col);
         }
 
         // ---------- vista previa (canvas, EXACTAMENTE los mismos valores que usa el juego real en index.html) ----------
@@ -609,6 +680,7 @@
         function renderPreview() {
           const lines = getLines();
           const hasTitle = !!levelTitleInput.value.trim();
+          const growsUp = growsUpInput.checked;
           const allLinesForSize = [
             hasTitle ? levelTitleInput.value.trim() : "",
             "",
@@ -630,6 +702,14 @@
           const worldWidth = COL_LEFT_START * 2 + contentCharsPerLine * CHAR_W;
           const worldHeight =
             PAGE_TOP + (displayRows - 1) * LINE_H + LINE_H * 1.6;
+
+          // misma idea que rowY() en index.html: si el nivel "crece hacia
+          // arriba", el renglón 0 (título) va abajo del todo y los
+          // siguientes se apilan subiendo
+          function rowY(r) {
+            const rr = growsUp ? displayRows - 1 - r : r;
+            return PAGE_TOP + rr * LINE_H;
+          }
 
           const width = worldWidth * PREVIEW_ZOOM;
           const height = worldHeight * PREVIEW_ZOOM;
@@ -660,7 +740,7 @@
           const allLines = allLinesForSize;
           for (let r = 0; r < allLines.length; r++) {
             const line = allLines[r] || "";
-            const y = PAGE_TOP + r * LINE_H;
+            const y = rowY(r);
             const isTitleRow = r === 0 && hasTitle;
             for (let i = 0; i < line.length; i++) {
               const ch = line[i];
@@ -688,6 +768,17 @@
               ctx.fillText("▶", arrowX + 2, y + FONT_SIZE - 4);
             }
           }
+
+          // punto de aparición: la estrella si hay marcador explícito, o
+          // el default (renglón 0, borde izquierdo) si no lo hay — mismo
+          // criterio que usa index.html (rowY(0) - 20)
+          const spawnR = spawnRow !== null ? spawnRow + 2 : 0;
+          const spawnC = spawnRow !== null ? spawnCol || 0 : 0;
+          const spawnX = COL_LEFT_START + spawnC * CHAR_W;
+          const spawnY = rowY(spawnR) - 20;
+          ctx.fillStyle = "#a9812f";
+          ctx.font = `${FONT_SIZE}px sans-serif`;
+          ctx.fillText("★", spawnX - 2, spawnY + FONT_SIZE - 4);
         }
 
         // ---------- exportar ----------
@@ -699,9 +790,20 @@
           const title = levelTitleInput.value.trim();
 
           const exportLines = lines.map((line, r) => {
+            // si los dos marcadores caen en el mismo renglón, se inserta
+            // primero el que tenga la columna más grande: así el índice
+            // del segundo (más chico) no se corre por la inserción del
+            // primero
+            const inserts = [];
             if (navRow === r && navCol !== null)
-              return insertMarker(line, navCol);
-            return line;
+              inserts.push({ col: navCol, marker: "(*)" });
+            if (spawnRow === r && spawnCol !== null)
+              inserts.push({ col: spawnCol, marker: "(^)" });
+            inserts.sort((a, b) => b.col - a.col);
+            let result = line;
+            for (const ins of inserts)
+              result = insertMarker(result, ins.col, ins.marker);
+            return result;
           });
 
           let out = `// Nivel generado con el Creador de niveles de Casus Liber\n`;
@@ -710,6 +812,9 @@
           out += `\n];\n`;
           if (title) {
             out += `window.LEVEL_TITLES[${idxExpr}] = ${JSON.stringify(title)};\n`;
+          }
+          if (growsUpInput.checked) {
+            out += `window.LEVEL_GROWS_UP[${idxExpr}] = true;\n`;
           }
           return out;
         }
@@ -744,6 +849,7 @@
               const sandbox = {
                 LEVELS: [],
                 LEVEL_TITLES: [],
+                LEVEL_GROWS_UP: [],
                 LEVEL_COUNT: Number(levelNumInput.value) || 10,
               };
               const runner = new Function("window", text + "\n;return window;");
@@ -765,16 +871,27 @@
               const title =
                 (result.LEVEL_TITLES && result.LEVEL_TITLES[idx]) || "";
               levelTitleInput.value = title;
+              growsUpInput.checked = !!(
+                result.LEVEL_GROWS_UP && result.LEVEL_GROWS_UP[idx]
+              );
 
               navRow = null;
               navCol = null;
+              spawnRow = null;
+              spawnCol = null;
               const cleanLines = rawLines.map((l, i) => {
-                const s = String(l);
+                let s = String(l);
                 const markerAt = s.indexOf("(*)");
                 if (markerAt !== -1) {
                   navRow = i;
                   navCol = markerAt;
-                  return s.replace(/\(\*\)/g, "");
+                  s = s.replace(/\(\*\)/g, "");
+                }
+                const spawnAt = s.indexOf("(^)");
+                if (spawnAt !== -1) {
+                  spawnRow = i;
+                  spawnCol = spawnAt;
+                  s = s.replace(/\(\^\)/g, "");
                 }
                 return s;
               });
