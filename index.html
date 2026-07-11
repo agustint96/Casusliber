@@ -320,7 +320,7 @@
       // en el editor. El nivel 1 siempre usa "Casus liber" fijo, sin
       // importar lo que haya acá.
       window.LEVEL_TITLES = [];
-      window.LEVEL_COUNT = 14; // <- cambiá este número al agregar/quitar niveles numerados
+      window.LEVEL_COUNT = 15; // <- cambiá este número al agregar/quitar niveles numerados
       for (let n = 1; n <= window.LEVEL_COUNT; n++) {
         document.write('<script src="niveles/nivel' + n + '.js"><\/script>');
       }
@@ -426,8 +426,14 @@
         const PLATFORM_W = 7.5; // ancho real de colisión de cada letra (deja huequito chico)
         const PLATFORM_H = 4;
         const LINE_H = 26; // separación vertical entre líneas (hay que saltar)
-        const CHARS_PER_LINE = 50;
-        const LINES_PER_COL = 26;
+        // CHARS_PER_LINE / LINES_PER_COL ya NO son fijos: cada nivel puede
+        // tener el ancho y el alto que quiera (un nivel gigante y otro
+        // chiquito conviven sin problema). Se calculan por nivel, adentro
+        // de buildPage(), a partir del contenido real de ese nivel. Estas
+        // constantes de acá quedan solo como "piso" mínimo, para que un
+        // nivel vacío o muy chico no genere un mundo de ancho/alto cero.
+        const MIN_CHARS_PER_LINE = 10;
+        const MIN_LINES_PER_COL = 3;
         const NUM_COLS = 1;
         const COL_GAP = 120; // vacío entre columnas (sin efecto con 1 columna)
         const PAGE_TOP = 90;
@@ -494,18 +500,16 @@
         function wrapColumnLines(pageIdx) {
           const levelIdx = getLevelIndex(pageIdx);
           const blocks = LEVELS[levelIdx] || [];
-          const lines = [];
-          for (let i = 0; i < LINES_PER_COL; i++) {
-            if (i === 0) {
-              lines.push(getLevelTitle(levelIdx));
-            } else if (i === 1) {
-              lines.push("");
-            } else {
-              const raw = blocks[i - 2] || "";
-              // "(*)" es solo una marca (indica en qué fila va la flecha de
-              // "siguiente"), nunca una plataforma real: se saca del texto
-              lines.push(raw.slice(0, CHARS_PER_LINE).replace(/\(\*\)/g, ""));
-            }
+          // Ya no hay tope de renglones: el nivel mide exactamente lo que
+          // mida su array (título + blanco + todos sus renglones, sean 5 o
+          // 500). Tampoco se recorta cada renglón a un ancho fijo: se usa
+          // tal cual está escrito.
+          const lines = [getLevelTitle(levelIdx), ""];
+          for (let i = 0; i < blocks.length; i++) {
+            const raw = blocks[i] || "";
+            // "(*)" es solo una marca (indica en qué fila va la flecha de
+            // "siguiente"), nunca una plataforma real: se saca del texto
+            lines.push(raw.replace(/\(\*\)/g, ""));
           }
           return lines;
         }
@@ -521,7 +525,7 @@
         function getNavMarkerPos(levelIdx) {
           const blocks = LEVELS[levelIdx] || [];
           for (let i = 0; i < blocks.length; i++) {
-            const raw = (blocks[i] || "").slice(0, CHARS_PER_LINE);
+            const raw = blocks[i] || "";
             const idx = raw.indexOf("(*)");
             if (idx !== -1) return { row: i + 2, col: idx };
           }
@@ -538,13 +542,26 @@
           for (let c = 0; c < NUM_COLS; c++) {
             columns.push(wrapColumnLines(pageIdx));
           }
+
+          // Tamaño real de ESTE nivel: tantos renglones como tenga (mínimo
+          // MIN_LINES_PER_COL) y tan ancho como su renglón más largo
+          // (mínimo MIN_CHARS_PER_LINE). Cada nivel puede ser tan grande o
+          // tan chico como se haya escrito, libremente.
+          const linesPerCol = Math.max(
+            MIN_LINES_PER_COL,
+            ...columns.map((col) => col.length),
+          );
+          const charsPerLine = Math.max(
+            MIN_CHARS_PER_LINE,
+            ...columns.flatMap((col) => col.map((line) => line.length)),
+          );
+
           const platforms = [];
 
           for (let c = 0; c < NUM_COLS; c++) {
-            const colX =
-              COL_LEFT_START + c * (CHARS_PER_LINE * CHAR_W + COL_GAP);
-            for (let r = 0; r < LINES_PER_COL; r++) {
-              const line = columns[c][r];
+            const colX = COL_LEFT_START + c * (charsPerLine * CHAR_W + COL_GAP);
+            for (let r = 0; r < linesPerCol; r++) {
+              const line = columns[c][r] || "";
               const y = PAGE_TOP + r * LINE_H;
 
               // "palabra" = uno o más caracteres no-espacio seguidos (un
@@ -596,19 +613,19 @@
 
           const worldWidth =
             COL_LEFT_START * 2 +
-            NUM_COLS * (CHARS_PER_LINE * CHAR_W) +
+            NUM_COLS * (charsPerLine * CHAR_W) +
             (NUM_COLS - 1) * COL_GAP;
           const worldBottom =
-            PAGE_TOP + (LINES_PER_COL - 1) * LINE_H + LINE_H * 1.6; // debajo de esto = vacío/muerte
+            PAGE_TOP + (linesPerCol - 1) * LINE_H + LINE_H * 1.6; // debajo de esto = vacío/muerte
 
           // La flecha IZQUIERDA (capítulo anterior) va SIEMPRE a la altura
           // de la primera fila con contenido de la primera columna (la fila
           // donde cae el personaje al arrancar el nivel), pegada al borde
           // izquierdo de la columna. Así queda siempre a la izquierda del
           // primer carácter, salvo que se fuerce NAV_ROW_INDEX a otro valor.
-          const midRowIndex = Math.round((LINES_PER_COL - 1) / 2);
+          const midRowIndex = Math.round((linesPerCol - 1) / 2);
           function findFirstContentRow() {
-            for (let r = 0; r < LINES_PER_COL; r++) {
+            for (let r = 0; r < linesPerCol; r++) {
               const line = columns[0][r] || "";
               for (let i = 0; i < line.length; i++) {
                 if (line[i] !== " ") return r;
@@ -642,10 +659,10 @@
           // mismo margen (NAV_GAP_RIGHT).
           const lastColIndex = NUM_COLS - 1;
           const lastColX =
-            COL_LEFT_START + lastColIndex * (CHARS_PER_LINE * CHAR_W + COL_GAP);
+            COL_LEFT_START + lastColIndex * (charsPerLine * CHAR_W + COL_GAP);
 
           function findLastContentRow() {
-            for (let r = LINES_PER_COL - 1; r >= 0; r--) {
+            for (let r = linesPerCol - 1; r >= 0; r--) {
               const line = columns[lastColIndex][r] || "";
               for (let i = 0; i < line.length; i++) {
                 if (line[i] !== " ") return r;
@@ -688,6 +705,8 @@
             navRowLastCharEndX,
             worldWidth,
             worldBottom,
+            linesPerCol,
+            charsPerLine,
             startX: COL_LEFT_START + 0 * CHAR_W,
             startY: PAGE_TOP - 20,
           };
@@ -867,18 +886,21 @@
           }
         }
 
-        function getColCenterX() {
-          return COL_LEFT_START + (CHARS_PER_LINE * CHAR_W) / 2;
-        }
-
-        // en desktop la cámara horizontal queda fija mostrando la columna
-        // entera (como siempre); en celular, con el zoom activado, en vez de
-        // eso sigue al personaje, sin salirse de la zona jugable (los mismos
-        // límites que usa la caída al vacío, -80 / worldWidth+80)
+        // La cámara horizontal sigue al personaje, como cualquier
+        // plataformero, PERO si el nivel entra completo en la pantalla (es
+        // más angosto que el viewport) se centra en vez de perseguir al
+        // personaje: si no, al spawnear cerca del borde izquierdo, la
+        // cámara quedaba pegada ahí y el escenario se veía "tirado" para
+        // un lado en vez de centrado. Con niveles más anchos que la
+        // pantalla, sigue al personaje sin salirse de la zona jugable (los
+        // mismos límites que usa la caída al vacío, -80 / worldWidth+80).
         function getTargetCamX() {
-          if (!isNarrowScreen) return getColCenterX() - viewW / 2;
-          const minCamX = -80;
-          const maxCamX = Math.max(minCamX, page.worldWidth + 80 - viewW);
+          const margin = 80;
+          if (page.worldWidth + margin * 2 <= viewW) {
+            return (page.worldWidth - viewW) / 2;
+          }
+          const minCamX = -margin;
+          const maxCamX = Math.max(minCamX, page.worldWidth + margin - viewW);
           const raw = player.x + player.w / 2 - viewW / 2;
           return Math.min(Math.max(raw, minCamX), maxCamX);
         }
@@ -1177,7 +1199,7 @@
           // guías de renglón (líneas tenues del papel)
           ctx.strokeStyle = "rgba(28,28,28,0.08)";
           ctx.lineWidth = 1;
-          for (let r = 0; r < LINES_PER_COL; r++) {
+          for (let r = 0; r < page.linesPerCol; r++) {
             const y = PAGE_TOP + r * LINE_H + PLATFORM_H + 10;
             ctx.beginPath();
             ctx.moveTo(0, y);
@@ -1189,7 +1211,9 @@
           ctx.fillStyle = "rgba(28,28,28,0.035)";
           for (let c = 0; c < NUM_COLS - 1; c++) {
             const gapX =
-              COL_LEFT_START + (c + 1) * CHARS_PER_LINE * CHAR_W + c * COL_GAP;
+              COL_LEFT_START +
+              (c + 1) * page.charsPerLine * CHAR_W +
+              c * COL_GAP;
             ctx.fillRect(
               gapX,
               PAGE_TOP - 40,
