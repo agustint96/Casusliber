@@ -172,27 +172,33 @@
         pointer-events: none;
       }
 
-      /* ---------- grilla editable ---------- */
-      .grid-scroll {
-        overflow-x: auto;
-        padding-bottom: 6px;
+      /* ---------- grilla editable (textarea único, no 1 input por celda) ---------- */
+      .grid-editor {
+        display: flex;
+        align-items: flex-start;
+        border: 1px solid rgba(28, 28, 28, 0.12);
+        max-height: 620px;
+        overflow: auto;
       }
-      .row {
+      .gutter {
+        flex: 0 0 auto;
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: #fff;
+        border-right: 1px solid var(--paper-line);
+      }
+      .gutter-row {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        height: var(--cell-h);
+        padding: 0 6px;
         border-bottom: 1px solid var(--paper-line);
-        padding: 2px 0;
+        white-space: nowrap;
       }
-      .row:hover {
-        background: rgba(179, 38, 30, 0.03);
-      }
-      .row.row-invalid {
-        background: rgba(179, 38, 30, 0.1);
-      }
-      .row.row-invalid .rownum {
-        color: var(--pen-red);
-        font-weight: bold;
+      .gutter-row.row-marked {
+        background: rgba(179, 38, 30, 0.08);
       }
       .rownum {
         width: 22px;
@@ -201,32 +207,8 @@
         color: var(--ink-faint);
         text-align: right;
       }
-      .cells {
-        display: grid;
-        grid-template-columns: repeat(var(--cols, 50), var(--cell-w));
-        flex: 0 0 auto;
-      }
-      .cell {
-        width: var(--cell-w);
-        height: var(--cell-h);
-        border: none;
-        border-right: 1px dotted rgba(28, 28, 28, 0.06);
-        text-align: center;
-        font-family: "Special Elite", monospace;
-        font-size: 13px;
-        background: transparent;
-        color: var(--ink);
-        padding: 0;
-      }
-      .cell:focus {
-        outline: none;
-        background: rgba(169, 129, 47, 0.15);
-      }
-      .cell.lit {
-        background: rgba(28, 28, 28, 0.04);
-      }
       .rowcount {
-        width: 44px;
+        width: 40px;
         flex: 0 0 auto;
         font-size: 10px;
         color: var(--ink-faint);
@@ -241,6 +223,36 @@
         color: var(--ink-faint);
         cursor: pointer;
         line-height: 1;
+      }
+      .flagbtn.active {
+        background: var(--pen-red);
+        border-color: var(--pen-red);
+        color: #fff;
+      }
+      #gridArea {
+        flex: 1 1 auto;
+        display: block;
+        resize: none;
+        border: none;
+        outline: none;
+        margin: 0;
+        padding: 0;
+        background-image: repeating-linear-gradient(
+          to right,
+          rgba(28, 28, 28, 0.05) 0,
+          rgba(28, 28, 28, 0.05) 1px,
+          transparent 1px,
+          transparent var(--cell-w)
+        );
+        background-position: -1px 0;
+        font-family: "Special Elite", monospace;
+        font-size: 13px;
+        line-height: var(--cell-h);
+        color: var(--ink);
+        white-space: pre;
+        overflow: hidden;
+        min-width: 100%;
+        width: max-content;
       }
       .flagbtn.active {
         background: var(--pen-red);
@@ -338,61 +350,31 @@
       </section>
 
       <section class="panel">
-        <h2>Tamaño de la grilla</h2>
-        <p class="help">
-          El juego ya no tiene un tamaño fijo de nivel: cada nivel mide
-          exactamente lo que escribas (tan angosto/bajo o tan ancho/alto como
-          quieras). Esta grilla es solo tu espacio de edición: agrandala cuando
-          necesites más lugar. Achicarla recorta lo que quede afuera de las
-          nuevas filas/columnas, así que hacelo con cuidado.
-        </p>
-        <div class="toolbar">
-          <div class="field">
-            <label for="rowsInput">Filas</label>
-            <input type="number" id="rowsInput" min="1" max="600" value="24" />
-          </div>
-          <div class="field">
-            <label for="colsInput">Columnas</label>
-            <input type="number" id="colsInput" min="1" max="400" value="50" />
-          </div>
-          <div class="field">
-            <label>&nbsp;</label>
-            <button class="btn secondary" id="applySizeBtn">
-              Aplicar tamaño
-            </button>
-          </div>
-          <div class="field">
-            <label>&nbsp;</label>
-            <button class="btn secondary" id="addRowsBtn">+10 filas</button>
-          </div>
-          <div class="field">
-            <label>&nbsp;</label>
-            <button class="btn secondary" id="addColsBtn">+10 columnas</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel">
         <h2>Pista</h2>
         <p class="help">
           Escribí letra por letra: cada carácter se convierte en una plataforma
           sobre la que se salta. Un espacio en blanco es simplemente vacío (no
-          hay plataforma ahí). Para marcar
-          <b>exactamente dónde</b> va la flecha de "siguiente nivel", escribí
-          <b>-&gt;</b> justo a la derecha del carácter que quieras: se borra
-          solo y la flecha queda pegada ahí mismo (también podés usar el botón
-          <b>▶</b>, que la pone al final del texto de ese renglón). Sin marca,
-          el juego la calcula sola en el último renglón con contenido.
+          hay plataforma ahí). El texto crece solo, sin límite de filas ni
+          columnas: escribí, pegá texto largo, o hacé Enter para bajar de
+          renglón, y el lienzo se acomoda automáticamente.
         </p>
         <p class="help">
-          Esta grilla no es un límite del juego, es solo tu lienzo: si te quedás
-          corto de lugar, agrandala con los controles de arriba (o escribí
-          directamente en el último renglón/columna visible, que también podés
-          expandir sobre la marcha). Si cargás un nivel ya hecho más grande que
-          la grilla actual, se agranda sola para que entre completo.
+          Para marcar <b>exactamente dónde</b> va la flecha de "siguiente
+          nivel", escribí <b>-&gt;</b> justo a la derecha del carácter que
+          quieras: se borra solo y la flecha queda pegada ahí mismo (también
+          podés usar el botón <b>▶</b> de la izquierda, que la pone al final del
+          texto de ese renglón). Sin marca, el juego la calcula sola en el
+          último renglón con contenido.
         </p>
-        <div class="grid-scroll">
-          <div id="grid"></div>
+        <div class="grid-editor">
+          <div class="gutter" id="gutter"></div>
+          <textarea
+            id="gridArea"
+            spellcheck="false"
+            autocomplete="off"
+            wrap="off"
+            rows="24"
+          ></textarea>
         </div>
       </section>
 
@@ -426,213 +408,162 @@
 
     <script>
       (() => {
-        // Tamaño de la grilla: ya NO es fijo. Son valores de partida; crecen
-        // solos mientras editás (te movés más allá del borde, pegás texto
-        // largo, cargás un nivel grande) o los cambiás a mano con los
-        // controles de arriba. El juego real (index.html) no tiene techo:
-        // cada nivel mide exactamente lo que tenga escrito.
-        let ROWS = 24;
-        let COLS = 50;
-        const MAX_ROWS = 600;
-        const MAX_COLS = 400;
-
-        const gridEl = document.getElementById("grid");
+        const gridArea = document.getElementById("gridArea");
+        const gutterEl = document.getElementById("gutter");
         const levelNumInput = document.getElementById("levelNum");
         const isFinalInput = document.getElementById("isFinal");
         const levelTitleInput = document.getElementById("levelTitle");
         const statsLine = document.getElementById("statsLine");
         const downloadBtn = document.getElementById("downloadBtn");
-        const rowsInput = document.getElementById("rowsInput");
-        const colsInput = document.getElementById("colsInput");
-        const applySizeBtn = document.getElementById("applySizeBtn");
-        const addRowsBtn = document.getElementById("addRowsBtn");
-        const addColsBtn = document.getElementById("addColsBtn");
         const canvas = document.getElementById("previewCanvas");
         const ctx = canvas.getContext("2d");
 
-        let navRow = null; // fila (0-indexada dentro de la grilla) marcada con (*)
+        let navRow = null; // fila (0-indexada) marcada con (*)
         let navCol = null; // columna exacta (cantidad de caracteres antes del marcador)
 
-        // ---------- construir/reconstruir la grilla ----------
-        function buildGridDom() {
-          gridEl.style.setProperty("--cols", COLS);
+        // Cantidad mínima de renglones que se muestran como "lienzo" vacío
+        // (coincide con el atributo rows del textarea), para que el gutter
+        // siempre tenga el mismo alto que el área de texto.
+        const MIN_VISIBLE_ROWS = Number(gridArea.getAttribute("rows")) || 24;
+
+        // ---------- helpers de líneas ----------
+        function getLines() {
+          const lines = gridArea.value.split(/\r\n|\r|\n/);
+          // recorta renglones vacíos al final (no los del medio), igual que antes
+          while (lines.length && lines[lines.length - 1].trim() === "")
+            lines.pop();
+          return lines.map((l) => l.replace(/\s+$/, ""));
+        }
+
+        function setLines(lines) {
+          gridArea.value = lines.join("\n");
+          syncGrid();
+        }
+
+        // ---------- gutter (números de renglón, contador, flecha) ----------
+        // Se reconstruye a partir de un simple split de texto: nada de un
+        // nodo del DOM por carácter, así que es instantáneo aunque el nivel
+        // tenga cientos de renglones.
+        function rebuildGutter(lines) {
           let html = "";
-          for (let r = 0; r < ROWS; r++) {
-            html += `<div class="row" data-row="${r}">
-              <span class="rownum">${r + 1}</span>
-              <div class="cells">`;
-            for (let c = 0; c < COLS; c++) {
-              html += `<input class="cell" maxlength="1" data-row="${r}" data-col="${c}" autocomplete="off" spellcheck="false" />`;
+          const total = Math.max(lines.length, MIN_VISIBLE_ROWS);
+          for (let r = 0; r < total; r++) {
+            const line = lines[r] || "";
+            let count = 0;
+            for (let i = 0; i < line.length; i++) {
+              if (line[i] !== " ") count++;
             }
-            html += `</div>
-              <span class="rowcount" data-row="${r}">0/${COLS}</span>
-              <button class="flagbtn" data-row="${r}" title="Marcar como salida (flecha →)">▶</button>
+            const marked = navRow === r;
+            html += `<div class="gutter-row${marked ? " row-marked" : ""}" data-row="${r}">
+              <span class="rownum">${r + 1}</span>
+              <span class="rowcount">${count}</span>
+              <button class="flagbtn${marked ? " active" : ""}" data-row="${r}" title="Marcar como salida (flecha →)">▶</button>
             </div>`;
           }
-          gridEl.innerHTML = html;
-        }
-        buildGridDom();
-
-        function getCell(r, c) {
-          return gridEl.querySelector(
-            `.cell[data-row="${r}"][data-col="${c}"]`,
-          );
+          gutterEl.innerHTML = html;
         }
 
-        // Guarda/restaura el contenido de todas las celdas actuales, para
-        // no perder nada cuando la grilla se reconstruye a otro tamaño.
-        function snapshotGrid() {
-          const values = [];
-          for (let r = 0; r < ROWS; r++) {
-            const row = [];
-            for (let c = 0; c < COLS; c++) {
-              const cell = getCell(r, c);
-              row.push(cell ? cell.value || "" : "");
-            }
-            values.push(row);
-          }
-          return values;
+        // Ajusta la altura del textarea a su contenido y reconstruye el
+        // gutter, para que ambos queden siempre alineados renglón a renglón.
+        function autoGrow() {
+          gridArea.style.height = "auto";
+          gridArea.style.height = gridArea.scrollHeight + "px";
         }
 
-        function restoreGrid(values) {
-          for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-              const v = (values[r] && values[r][c]) || "";
-              const cell = getCell(r, c);
-              cell.value = v;
-              cell.classList.toggle("lit", !!v && v !== " ");
-            }
-            updateRowCount(r);
-          }
-        }
-
-        // Cambia el tamaño de la grilla a (newRows, newCols), conservando
-        // todo el contenido que siga entrando. Si se achica, lo que quede
-        // afuera de las nuevas filas/columnas se pierde (por eso el botón
-        // manual de "Aplicar tamaño" pide confirmación cuando achica).
-        function setGridSize(newRows, newCols) {
-          newRows = Math.max(1, Math.min(MAX_ROWS, Math.round(newRows) || 1));
-          newCols = Math.max(1, Math.min(MAX_COLS, Math.round(newCols) || 1));
-          if (newRows === ROWS && newCols === COLS) return;
-          const values = snapshotGrid();
-          ROWS = newRows;
-          COLS = newCols;
-          buildGridDom();
-          restoreGrid(values);
-          if (navRow !== null && navRow >= ROWS) {
-            navRow = null;
-            navCol = null;
-          }
-          if (navCol !== null && navCol > COLS) navCol = COLS;
-          gridEl.querySelectorAll(".flagbtn").forEach((b) => {
-            b.classList.toggle("active", Number(b.dataset.row) === navRow);
-          });
-          rowsInput.value = ROWS;
-          colsInput.value = COLS;
+        function syncGrid() {
+          const lines = gridArea.value.split(/\r\n|\r|\n/);
+          rebuildGutter(lines);
+          autoGrow();
           updateAllStats();
           renderPreview();
         }
 
-        // Crece la grilla (nunca la achica) para que al menos entren
-        // "minRows" filas y "minCols" columnas. Es lo que usan los eventos
-        // de edición (escribir en el borde, pegar texto largo, cargar un
-        // nivel grande) para agrandarse solos sin pedir permiso.
-        function ensureSize(minRows, minCols) {
-          if (minRows > ROWS || minCols > COLS) {
-            setGridSize(Math.max(ROWS, minRows), Math.max(COLS, minCols));
-          }
-        }
-
-        applySizeBtn.addEventListener("click", () => {
-          const newRows = Number(rowsInput.value) || ROWS;
-          const newCols = Number(colsInput.value) || COLS;
-          if (newRows < ROWS || newCols < COLS) {
-            if (
-              !confirm(
-                "Achicar la grilla puede borrar texto que quede afuera de las nuevas filas/columnas. ¿Seguir?",
-              )
-            ) {
-              rowsInput.value = ROWS;
-              colsInput.value = COLS;
-              return;
-            }
-          }
-          setGridSize(newRows, newCols);
-        });
-        addRowsBtn.addEventListener("click", () =>
-          setGridSize(ROWS + 10, COLS),
-        );
-        addColsBtn.addEventListener("click", () =>
-          setGridSize(ROWS, COLS + 10),
-        );
-
-        function focusCell(r, c) {
-          if (r < 0 || c < 0) return;
-          if (r >= ROWS || c >= COLS) {
-            // crecimiento orgánico: moverte un paso más allá del borde
-            // agranda la grilla justo lo necesario para seguir ahí
-            ensureSize(r + 1, c + 1);
-          }
-          const cell = getCell(r, c);
-          if (cell) {
-            cell.focus();
-            cell.select();
-          }
-        }
-
-        function updateRowCount(r) {
-          let count = 0;
-          for (let c = 0; c < COLS; c++) {
-            const v = getCell(r, c).value;
-            if (v && v !== " ") count++;
-          }
-          const label = gridEl.querySelector(`.rowcount[data-row="${r}"]`);
-          if (label) label.textContent = `${count}/${COLS}`;
-        }
-
         // Detecta si en el renglón "r" el usuario escribió "->" en dos
-        // celdas consecutivas. Si lo encuentra: borra esas dos celdas (no
-        // quedan como texto real) y marca ese renglón Y esa columna como
-        // salida (la flecha va a quedar pegada justo a la derecha del
-        // carácter anterior a donde escribiste "->"). Devuelve la columna
-        // donde empezaba el "->", o null si no encontró nada.
-        function checkArrowMarker(r) {
-          for (let c = 0; c < COLS - 1; c++) {
-            const a = getCell(r, c).value;
-            const b = getCell(r, c + 1).value;
-            if (a === "-" && b === ">") {
-              getCell(r, c).value = "";
-              getCell(r, c).classList.remove("lit");
-              getCell(r, c + 1).value = "";
-              getCell(r, c + 1).classList.remove("lit");
+        // caracteres consecutivos. Si lo encuentra: la borra del texto y
+        // marca ese renglón/columna como salida (la flecha va a quedar
+        // pegada justo a la derecha del carácter anterior a donde escribiste
+        // "->"). Devuelve true si modificó el texto.
+        function checkArrowMarker() {
+          const lines = gridArea.value.split(/\r\n|\r|\n/);
+          for (let r = 0; r < lines.length; r++) {
+            const idx = lines[r].indexOf("->");
+            if (idx !== -1) {
               navRow = r;
-              navCol = c;
-              gridEl.querySelectorAll(".flagbtn").forEach((btn) => {
-                btn.classList.toggle(
-                  "active",
-                  Number(btn.dataset.row) === navRow,
-                );
-              });
-              updateRowCount(r);
-              return c;
+              navCol = idx;
+              lines[r] = lines[r].slice(0, idx) + lines[r].slice(idx + 2);
+              gridArea.value = lines.join("\n");
+              // recoloca el cursor justo donde quedó el marcador, en vez de
+              // dejarlo saltar al final del texto (que es lo que hace el
+              // navegador por default al reasignar .value)
+              let pos = 0;
+              for (let i = 0; i < r; i++) pos += lines[i].length + 1;
+              pos += idx;
+              gridArea.selectionStart = gridArea.selectionEnd = pos;
+              return true;
             }
           }
-          return null;
+          return false;
         }
+
+        function lastContentCol(line) {
+          let end = line.length;
+          while (end > 0 && line[end - 1] === " ") end--;
+          return end;
+        }
+
+        // ---------- eventos ----------
+        gridArea.addEventListener("input", () => {
+          checkArrowMarker();
+          syncGrid();
+        });
+
+        gridArea.addEventListener("scroll", () => {
+          gutterEl.scrollTop = gridArea.scrollTop;
+        });
+
+        gutterEl.addEventListener("click", (e) => {
+          const btn = e.target.closest(".flagbtn");
+          if (!btn) return;
+          const r = Number(btn.dataset.row);
+          const lines = gridArea.value.split(/\r\n|\r|\n/);
+          if (navRow === r) {
+            navRow = null;
+            navCol = null;
+          } else {
+            navRow = r;
+            navCol = lastContentCol(lines[r] || ""); // por defecto: justo después del último carácter de la fila
+          }
+          syncGrid();
+        });
+
+        document.getElementById("clearBtn").addEventListener("click", () => {
+          if (!confirm("¿Vaciar toda la grilla y el título?")) return;
+          gridArea.value = "";
+          navRow = null;
+          navCol = null;
+          levelTitleInput.value = "";
+          syncGrid();
+        });
+
+        levelTitleInput.addEventListener("input", renderPreview);
+        levelNumInput.addEventListener("input", renderPreview);
+        isFinalInput.addEventListener("change", renderPreview);
 
         function updateAllStats() {
+          const lines = getLines();
           let nonEmptyRows = 0;
           let totalChars = 0;
-          for (let r = 0; r < ROWS; r++) {
+          let maxCols = 0;
+          for (const line of lines) {
             let rowHas = false;
-            for (let c = 0; c < COLS; c++) {
-              const v = getCell(r, c).value;
-              if (v && v !== " ") {
+            for (const ch of line) {
+              if (ch !== " ") {
                 totalChars++;
                 rowHas = true;
               }
             }
             if (rowHas) nonEmptyRows++;
+            if (line.length > maxCols) maxCols = line.length;
           }
           let navText;
           if (navRow === null) {
@@ -640,173 +571,7 @@
           } else {
             navText = `flecha de salida forzada en el renglón ${navRow + 1}, después del carácter ${navCol}`;
           }
-          statsLine.innerHTML = `<b>${nonEmptyRows}</b> renglones con texto · <b>${totalChars}</b> caracteres · grilla <b>${ROWS}×${COLS}</b> · ${navText}`;
-        }
-
-        // ---------- eventos de la grilla (delegación) ----------
-        gridEl.addEventListener("input", (e) => {
-          const t = e.target;
-          if (!t.classList.contains("cell")) return;
-          const r = Number(t.dataset.row);
-          const c = Number(t.dataset.col);
-          if (t.value.length > 1) t.value = t.value.slice(-1);
-          t.classList.toggle("lit", !!t.value && t.value !== " ");
-          updateRowCount(r);
-          const markerCol = checkArrowMarker(r);
-          updateAllStats();
-          renderPreview();
-          if (markerCol !== null) {
-            focusCell(r, markerCol + 2);
-          } else if (t.value) {
-            focusCell(r, c + 1);
-          }
-        });
-
-        gridEl.addEventListener("keydown", (e) => {
-          const t = e.target;
-          if (!t.classList.contains("cell")) return;
-          const r = Number(t.dataset.row);
-          const c = Number(t.dataset.col);
-
-          if (e.key === "ArrowRight") {
-            e.preventDefault();
-            focusCell(r, c + 1);
-          } else if (e.key === "ArrowLeft") {
-            e.preventDefault();
-            focusCell(r, c - 1);
-          } else if (e.key === "ArrowDown") {
-            e.preventDefault();
-            focusCell(r + 1, c);
-          } else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            focusCell(r - 1, c);
-          } else if (e.key === "Enter") {
-            e.preventDefault();
-            focusCell(r + 1, 0);
-          } else if (e.key === "Backspace" && !t.value) {
-            e.preventDefault();
-            focusCell(r, c - 1);
-            const prev = getCell(r, c - 1);
-            if (prev) {
-              prev.value = "";
-              prev.classList.remove("lit");
-              updateRowCount(r);
-              updateAllStats();
-              renderPreview();
-            }
-          }
-        });
-
-        gridEl.addEventListener("paste", (e) => {
-          const t = e.target;
-          if (!t.classList.contains("cell")) return;
-          e.preventDefault();
-          const text = (e.clipboardData || window.clipboardData).getData(
-            "text",
-          );
-          const r = Number(t.dataset.row);
-          const startC = Number(t.dataset.col);
-          const firstLine = (text.split(/\r\n|\r|\n/)[0] || "").slice(
-            0,
-            MAX_COLS - startC,
-          );
-          if (!firstLine) return;
-          // si el texto pegado no entra en el ancho actual, la grilla
-          // crece para que entre entero
-          ensureSize(r + 1, startC + firstLine.length);
-          for (let i = 0; i < firstLine.length; i++) {
-            const cell = getCell(r, startC + i);
-            const ch = firstLine[i];
-            cell.value = ch;
-            cell.classList.toggle("lit", ch !== " ");
-          }
-          updateRowCount(r);
-          checkArrowMarker(r);
-          updateAllStats();
-          renderPreview();
-        });
-
-        function lastContentCol(r) {
-          for (let c = COLS - 1; c >= 0; c--) {
-            const v = getCell(r, c).value;
-            if (v && v !== " ") return c + 1;
-          }
-          return 0;
-        }
-
-        gridEl.addEventListener("click", (e) => {
-          const btn = e.target.closest(".flagbtn");
-          if (!btn) return;
-          const r = Number(btn.dataset.row);
-          if (navRow === r) {
-            navRow = null;
-            navCol = null;
-          } else {
-            navRow = r;
-            navCol = lastContentCol(r); // por defecto: justo después del último carácter de la fila
-          }
-          gridEl.querySelectorAll(".flagbtn").forEach((b) => {
-            b.classList.toggle("active", Number(b.dataset.row) === navRow);
-          });
-          updateAllStats();
-          renderPreview();
-        });
-
-        document.getElementById("clearBtn").addEventListener("click", () => {
-          if (!confirm("¿Vaciar toda la grilla y el título?")) return;
-          gridEl.querySelectorAll(".cell").forEach((c) => {
-            c.value = "";
-            c.classList.remove("lit");
-          });
-          for (let r = 0; r < ROWS; r++) updateRowCount(r);
-          navRow = null;
-          navCol = null;
-          gridEl
-            .querySelectorAll(".flagbtn")
-            .forEach((b) => b.classList.remove("active"));
-          levelTitleInput.value = "";
-          updateAllStats();
-          renderPreview();
-        });
-
-        levelTitleInput.addEventListener("input", renderPreview);
-        levelNumInput.addEventListener("input", renderPreview);
-        isFinalInput.addEventListener("change", renderPreview);
-
-        // ---------- obtener líneas desde la grilla ----------
-        function getLines() {
-          const lines = [];
-          for (let r = 0; r < ROWS; r++) {
-            let line = "";
-            for (let c = 0; c < COLS; c++) {
-              line += getCell(r, c).value || " ";
-            }
-            lines.push(line.replace(/\s+$/, ""));
-          }
-          // recorta renglones vacíos al final (no los del medio)
-          while (lines.length && lines[lines.length - 1] === "") lines.pop();
-          return lines;
-        }
-
-        function setLines(lines) {
-          // agranda la grilla de antemano si el contenido a cargar es más
-          // grande que el tamaño actual, así no se pierde nada
-          const neededRows = lines.length;
-          const neededCols = lines.reduce(
-            (m, l) => Math.max(m, (l || "").length),
-            0,
-          );
-          ensureSize(neededRows, neededCols);
-          for (let r = 0; r < ROWS; r++) {
-            const raw = (lines[r] || "").slice(0, COLS);
-            for (let c = 0; c < COLS; c++) {
-              const ch = raw[c] || "";
-              const cell = getCell(r, c);
-              cell.value = ch;
-              cell.classList.toggle("lit", !!ch && ch !== " ");
-            }
-            updateRowCount(r);
-          }
+          statsLine.innerHTML = `<b>${nonEmptyRows}</b> renglones con texto · <b>${totalChars}</b> caracteres · ancho máximo <b>${maxCols}</b> columnas · ${navText}`;
         }
 
         // Inserta el literal "(*)" en la columna "col" de una línea (rellenando
@@ -1014,14 +779,7 @@
                 return s;
               });
 
-              // setLines agranda la grilla sola si el nivel cargado es más
-              // grande que el tamaño actual: no se recorta ni se pierde nada.
               setLines(cleanLines);
-              gridEl.querySelectorAll(".flagbtn").forEach((b) => {
-                b.classList.toggle("active", Number(b.dataset.row) === navRow);
-              });
-              updateAllStats();
-              renderPreview();
             } catch (err) {
               alert("No se pudo leer ese archivo de nivel: " + err.message);
             } finally {
@@ -1030,9 +788,34 @@
           });
 
         // ---------- init ----------
-        for (let r = 0; r < ROWS; r++) updateRowCount(r);
-        updateAllStats();
-        renderPreview();
+        // La grilla de fondo (rayitas verticales) es solo una guía visual;
+        // si no coincide con el ancho real de un carácter en esta tipografía,
+        // el texto se va "corriendo" respecto de las rayitas a medida que la
+        // línea es más larga (aunque la columna real del carácter siga
+        // siendo exacta). Medimos el ancho real una vez que la fuente cargó
+        // y ajustamos --cell-w para que la guía quede pegada al texto.
+        function calibrateCellWidth() {
+          const probe = document.createElement("span");
+          probe.style.position = "absolute";
+          probe.style.visibility = "hidden";
+          probe.style.whiteSpace = "pre";
+          probe.style.font = getComputedStyle(gridArea).font;
+          probe.textContent = "M".repeat(40);
+          document.body.appendChild(probe);
+          const w = probe.getBoundingClientRect().width / 40;
+          probe.remove();
+          if (w > 0) {
+            document.documentElement.style.setProperty("--cell-w", w + "px");
+          }
+        }
+        calibrateCellWidth();
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(() => {
+            calibrateCellWidth();
+            syncGrid();
+          });
+        }
+        syncGrid();
       })();
     </script>
   </body>
