@@ -1,15 +1,14 @@
-// Nivel 5 — generado por el editor de grilla
+// Nivel generado con el Creador de niveles de Casus Liber
 window.LEVELS[4] = [
-  "u",
+  "MAS",
   "",
   "",
-  "     u",
-  " ",
-  " ",
   "",
   "",
-  "                    uuuuuuuuuuuuuuuuuuuu",
-  "                          ",
-  "                ",
-  " ",
+  "",
+  "",
+  "",
+  "                   ACÁ",
+  "",
+  "  O ACA(*)",
 ];

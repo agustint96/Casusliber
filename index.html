@@ -320,7 +320,7 @@
       // en el editor. El nivel 1 siempre usa "Casus liber" fijo, sin
       // importar lo que haya acá.
       window.LEVEL_TITLES = [];
-      window.LEVEL_COUNT = 9; // <- cambiá este número al agregar/quitar niveles numerados
+      window.LEVEL_COUNT = 14; // <- cambiá este número al agregar/quitar niveles numerados
       for (let n = 1; n <= window.LEVEL_COUNT; n++) {
         document.write('<script src="niveles/nivel' + n + '.js"><\/script>');
       }
@@ -510,15 +510,20 @@
           return lines;
         }
 
-        // Busca "(*)" (marcador de fila para la flecha derecha) en el
-        // contenido crudo de un nivel. Devuelve la fila "de mundo" (ya
-        // contando las 2 filas reservadas de título/blanco) donde está, o
-        // null si el nivel no tiene marcador.
-        function getNavMarkerRow(levelIdx) {
+        // Busca "(*)" (marcador de posición para la flecha derecha) en el
+        // contenido crudo de un nivel. Devuelve { row, col } donde "row" es
+        // la fila "de mundo" (ya contando las 2 filas reservadas de
+        // título/blanco) y "col" es la cantidad de caracteres reales que
+        // hay ANTES del marcador en esa línea (o sea, el índice donde
+        // arranca "(*)" en el texto crudo) — eso es exactamente la columna
+        // donde tiene que quedar pegada la flecha, justo a la derecha del
+        // carácter anterior. Devuelve null si el nivel no tiene marcador.
+        function getNavMarkerPos(levelIdx) {
           const blocks = LEVELS[levelIdx] || [];
           for (let i = 0; i < blocks.length; i++) {
             const raw = (blocks[i] || "").slice(0, CHARS_PER_LINE);
-            if (raw.indexOf("(*)") !== -1) return i + 2;
+            const idx = raw.indexOf("(*)");
+            if (idx !== -1) return { row: i + 2, col: idx };
           }
           return null;
         }
@@ -596,25 +601,48 @@
           const worldBottom =
             PAGE_TOP + (LINES_PER_COL - 1) * LINE_H + LINE_H * 1.6; // debajo de esto = vacío/muerte
 
-          // La flecha IZQUIERDA (capítulo anterior) se queda donde siempre
-          // estuvo: en la fila del medio del nivel (comportamiento original),
-          // salvo que se fuerce NAV_ROW_INDEX a otro valor.
+          // La flecha IZQUIERDA (capítulo anterior) va SIEMPRE a la altura
+          // de la primera fila con contenido de la primera columna (la fila
+          // donde cae el personaje al arrancar el nivel), pegada al borde
+          // izquierdo de la columna. Así queda siempre a la izquierda del
+          // primer carácter, salvo que se fuerce NAV_ROW_INDEX a otro valor.
           const midRowIndex = Math.round((LINES_PER_COL - 1) / 2);
+          function findFirstContentRow() {
+            for (let r = 0; r < LINES_PER_COL; r++) {
+              const line = columns[0][r] || "";
+              for (let i = 0; i < line.length; i++) {
+                if (line[i] !== " ") return r;
+              }
+            }
+            // nivel completamente vacío (ni siquiera el título): fila del medio
+            return midRowIndex;
+          }
           const navRowIndex =
-            NAV_ROW_INDEX !== null ? NAV_ROW_INDEX : midRowIndex;
+            NAV_ROW_INDEX !== null ? NAV_ROW_INDEX : findFirstContentRow();
           const navRowY = PAGE_TOP + navRowIndex * LINE_H;
+          // x real del primer carácter de esa fila (igual que la flecha
+          // derecha hace con el último carácter de la suya); si la fila
+          // está vacía, se queda pegada al inicio de la columna
+          const navRowFirstCharText = columns[0][navRowIndex] || "";
+          let navRowFirstCharStartX = COL_LEFT_START;
+          for (let i = 0; i < navRowFirstCharText.length; i++) {
+            if (navRowFirstCharText[i] !== " ") {
+              navRowFirstCharStartX = COL_LEFT_START + i * CHAR_W;
+              break;
+            }
+          }
 
           // La flecha DERECHA (siguiente): si el nivel tiene un marcador
-          // "(*)" en el editor, va en ESA fila, pegada al MARGEN DERECHO
-          // de la grilla (no al último caracter de esa fila). Si no hay
-          // marcador, sigue el comportamiento de siempre: la ÚLTIMA fila
-          // del nivel que tenga contenido (buscando de abajo hacia
-          // arriba), pegada al último caracter real de esa fila. En
-          // cualquier caso se separa con el mismo margen (NAV_GAP_RIGHT).
+          // "(*)" en el editor, va en ESA fila, pegada JUSTO A LA DERECHA
+          // del carácter que está antes del marcador (la posición exacta
+          // que eligió quien armó el nivel). Si no hay marcador, sigue el
+          // comportamiento de siempre: la ÚLTIMA fila del nivel que tenga
+          // contenido (buscando de abajo hacia arriba), pegada al último
+          // caracter real de esa fila. En cualquier caso se separa con el
+          // mismo margen (NAV_GAP_RIGHT).
           const lastColIndex = NUM_COLS - 1;
           const lastColX =
             COL_LEFT_START + lastColIndex * (CHARS_PER_LINE * CHAR_W + COL_GAP);
-          const rightMarginX = lastColX + CHARS_PER_LINE * CHAR_W;
 
           function findLastContentRow() {
             for (let r = LINES_PER_COL - 1; r >= 0; r--) {
@@ -627,11 +655,14 @@
             return midRowIndex;
           }
 
-          const markerRow = getNavMarkerRow(getLevelIndex(pageIdx));
+          const markerPos = getNavMarkerPos(getLevelIndex(pageIdx));
           let rightNavRowIndex, navRowLastCharEndX;
-          if (markerRow !== null) {
-            rightNavRowIndex = markerRow;
-            navRowLastCharEndX = rightMarginX; // ancla al margen derecho, no al texto
+          if (markerPos !== null) {
+            rightNavRowIndex = markerPos.row;
+            // "col" es la cantidad de caracteres reales antes del marcador,
+            // así que esa misma cantidad de columnas de ancho es exactamente
+            // dónde tiene que quedar la flecha, pegada al carácter anterior
+            navRowLastCharEndX = lastColX + markerPos.col * CHAR_W;
           } else {
             rightNavRowIndex = findLastContentRow();
             const rightNavRowText =
@@ -651,6 +682,7 @@
             platforms,
             navRowIndex,
             navRowY,
+            navRowFirstCharStartX,
             rightNavRowIndex,
             rightNavRowY,
             navRowLastCharEndX,
@@ -684,7 +716,7 @@
         let idleFrames = 0;
         const idleAnchor = { x: player.x, y: player.y };
 
-        const GRAVITY = 0.25;
+        const GRAVITY = 0.3;
         const MOVE_SPEED = 3.0;
         const JUMP_VELOCITY = -10.5;
         const FRICTION = 0.84;
@@ -865,15 +897,16 @@
         const ARROW_L = 14; // largo de la flecha (mismo valor que usa drawNavArrow)
         const NAV_BOX_W = ARROW_L * 2 + 4; // ~32, igual al ancho real del dibujo
         const NAV_BOX_H = ARROW_L + 6; // ~20, igual al alto real del dibujo
-        const NAV_GAP = 40; // distancia entre el borde del texto y la flecha izquierda (como siempre)
         // -------------------- CAMBIO 2: flecha derecha más cerca del texto --------------------
         const NAV_GAP_RIGHT = 30; // antes 90
+        const NAV_GAP = NAV_GAP_RIGHT; // misma distancia que la flecha derecha
 
         function getNavBoxes() {
-          // izquierda: sigue en la fila del medio del nivel (como siempre),
-          // pegada al borde izquierdo de la columna
+          // izquierda: sigue la PRIMERA fila con contenido del nivel (donde
+          // cae el personaje al arrancar), pegada al borde izquierdo de la
+          // columna, para quedar siempre a la izquierda del primer carácter
           const leftScreenY = page.navRowY - camY;
-          const leftWorldX = COL_LEFT_START - NAV_GAP - NAV_BOX_W;
+          const leftWorldX = page.navRowFirstCharStartX - NAV_GAP - NAV_BOX_W;
           const leftX = leftWorldX - camX;
           // derecha: sigue la ÚLTIMA fila con contenido del nivel, bien
           // alejada (NAV_GAP_RIGHT) del último caracter real de esa fila

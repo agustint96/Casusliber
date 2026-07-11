@@ -1,11 +1,2 @@
-// Nivel 7 — generado por el editor de grilla
-window.LEVELS[6] = [
-  "",
-  "",
-  "",
-  "_ ",
-  "         ___________",
-  "                                        _________",
-  "                                                  ",
-  "                                                  ",
-];
+// Nivel 4 — generado por el editor de grilla
+window.LEVELS[6] = ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"];
