@@ -590,7 +590,9 @@
           autocomplete="off"
       /></span>
       <button class="ed-btn writeonly" id="edFinal">final</button>
-      <button class="ed-btn writeonly" id="edOpen">abrir<small>ctrl+o</small></button>
+      <button class="ed-btn writeonly" id="edOpen">
+        abrir<small>ctrl+o</small>
+      </button>
       <button class="ed-btn writeonly" id="edSend">
         ✉ enviar<small>ctrl+m</small>
       </button>
@@ -605,8 +607,8 @@
       <div class="sheet">
         <h2>Abrir un nivel</h2>
         <p>
-          Elegí uno de los niveles que ya tiene el juego para seguir
-          editándolo, empezá uno en blanco, o abrí un archivo
+          Elegí uno de los niveles que ya tiene el juego para seguir editándolo,
+          empezá uno en blanco, o abrí un archivo
           <code>nivelN.js</code> que tengas guardado.
         </p>
         <div class="levels" id="edLevelList"></div>
@@ -637,8 +639,8 @@
         <label class="ed-label"
           >Mensaje (opcional)
           <textarea class="ed-input" id="edNote" rows="3" maxlength="500">
-          </textarea
-        ></label>
+          </textarea>
+        </label>
         <p class="ed-status" id="edSendStatus"></p>
         <div class="levels">
           <button class="ed-chip" id="edSendGo">enviar</button>
@@ -1876,17 +1878,16 @@
           } else {
             const meltNow = Math.max(
               0,
-              Math.min(1, (idleFrames - IDLE_MELT_THRESHOLD) / MELT_RAMP_FRAMES),
+              Math.min(
+                1,
+                (idleFrames - IDLE_MELT_THRESHOLD) / MELT_RAMP_FRAMES,
+              ),
             );
-            drawInkBlob(
-              player.x + player.w / 2,
-              player.y + player.h / 2,
-              {
-                melt: meltNow,
-                facing: player.facing,
-                speed: Math.min(Math.hypot(player.vx, player.vy) / 8, 1),
-              },
-            );
+            drawInkBlob(player.x + player.w / 2, player.y + player.h / 2, {
+              melt: meltNow,
+              facing: player.facing,
+              speed: Math.min(Math.hypot(player.vx, player.vy) / 8, 1),
+            });
           }
 
           // cursor de escritura, renglón activo y demás ayudas del editor
@@ -2281,7 +2282,10 @@
           const r = editor.row;
           let line = edGetRow(r);
           if (editor.col > line.length) line = line.padEnd(editor.col, " ");
-          edSetRow(r, line.slice(0, editor.col) + text + line.slice(editor.col));
+          edSetRow(
+            r,
+            line.slice(0, editor.col) + text + line.slice(editor.col),
+          );
           edShiftMarkers(r, editor.col, text.length);
           editor.col = Math.min(MAX_COL, editor.col + text.length);
           editorSyncPage();
@@ -2332,10 +2336,7 @@
           const r = editor.row;
           const line = edGetRow(r);
           if (editor.col < line.length) {
-            edSetRow(
-              r,
-              line.slice(0, editor.col) + line.slice(editor.col + 1),
-            );
+            edSetRow(r, line.slice(0, editor.col) + line.slice(editor.col + 1));
             edShiftMarkers(r, editor.col + 1, -1);
             editorSyncPage();
           }
@@ -2869,11 +2870,11 @@
            ================================================================== */
         const ENVIO = {
           // URL del Apps Script publicado (termina en /exec)
-          url: "",
+          url: "https://script.google.com/macros/s/AKfycbxjOZz2-0EbJY-NcJUZ_SYiUU05WGL9fGuh7n-EKhxQWEL08-qIh-7cK2Ebqr6YrXYogQ/exec",
           // tu correo, para el respaldo por mailto y para mostrarlo en el panel
-          correo: "",
+          correo: "agustintardella7@gmail.com",
           // la misma clave que pusiste en enviar-nivel.gs
-          clave: "casusliber",
+          clave: "c45u5l1832",
         };
 
         function editorPanelAbierto() {
