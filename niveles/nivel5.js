@@ -1,14 +1,4 @@
-// Nivel generado con el Creador de niveles de Casus Liber
+// Nivel escrito con el modo edición de Casus Liber
 window.LEVELS[4] = [
-  "MAS",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "",
-  "                   ACÁ",
-  "",
-  "  O ACA(*)",
+  "(*)         Otro le(^)travaladna  (<)",
 ];
