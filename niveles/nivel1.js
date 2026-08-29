@@ -1,18 +1,6 @@
-// Nivel generado con el Creador de niveles de Casus Liber
+// Nivel escrito con el modo edición de Casus Liber
 window.LEVELS[0] = [
-  "(^)                                                                             ___(*)",
-  "",
-  "                                                                              __",
-  "",
-  "                                                                            __",
-  "",
-  "(<)___                                                                   ___",
-  "",
-  "",
-  "                                                                      ___",
-  "",
-  "",
-  "",
-  "               ____    ____      ____    ____     ____     ________",
+  "Podés utilizar las flec(^)has para moverte,                 Arriba o espacio para saltar            de plataforma       en platafo(*)rma ",
+  "        Como también la W, A, S Y D",
 ];
-window.LEVEL_TITLES[0] = "Este es mi nivel creado con el creador nuevo";
+window.LEVEL_TITLES[0] = "(<)Casus Liber";

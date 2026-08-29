@@ -1,5 +1,7 @@
-// Nivel generado con el Creador de niveles de Casus Liber
+// Nivel escrito con el modo edición de Casus Liber
 window.LEVELS[1] = [
-  "Barrabás llegó a la familia por vía            (*)",
-  "                                    marítima~~~~~",
+  "De ",
+  "           plataforma ",
+  "                                      forma(*)",
+  "                           en plata",
 ];
