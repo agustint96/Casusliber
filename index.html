@@ -1821,6 +1821,7 @@
                   // máquina y no una mano apoyada sobre el papel
                   x: player.x + player.w / 2 + (Math.random() - 0.5) * 0.7,
                   y: player.y + player.h / 2 + (Math.random() - 0.5) * 0.7,
+                  life: 1,
                 });
               }
             } else {
@@ -1833,6 +1834,10 @@
             playerInk -= avance / INK_RANGE + INK_TIME_DRAIN;
             if (playerInk < 0) playerInk = 0;
           }
+          
+          // reducir la vida del trail y filtrar los desvanecidos
+          trail.forEach((t) => (t.life -= 0.03));
+          trail = trail.filter((t) => t.life > 0);
 
           // seguimiento de inactividad: si está parado, en el suelo y casi
           // sin moverse del mismo punto, suma frames quietos; en cuanto se
@@ -2012,22 +2017,12 @@
           // apoyada sobre el papel deja trazo, no salpicaduras. Y no se
           // desvanece, porque la tinta en el papel no se va: queda ahí hasta
           // que se reinicia el nivel.
-          if (trail.length > 1) {
-            ctx.save();
-            ctx.strokeStyle = `rgba(28,28,28,${PEN_ALPHA})`;
-            ctx.lineWidth = PEN_WIDTH;
-            ctx.lineJoin = "round";
-            ctx.lineCap = "round";
+          // rastro de tinta: manchas desvanecientes
+          for (const t of trail) {
+            ctx.fillStyle = `rgba(28,28,28,${t.life * 0.3})`;
             ctx.beginPath();
-            ctx.moveTo(trail[0].x, trail[0].y);
-            for (let i = 1; i < trail.length; i++) {
-              const a = trail[i - 1],
-                b = trail[i];
-              ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
-            }
-            ctx.lineTo(trail[trail.length - 1].x, trail[trail.length - 1].y);
-            ctx.stroke();
-            ctx.restore();
+            ctx.arc(t.x, t.y, 2.2 * t.life, 0, Math.PI * 2);
+            ctx.fill();
           }
 
           // letras / plataformas
