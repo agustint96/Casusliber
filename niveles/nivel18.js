@@ -1,6 +1,6 @@
-// Nivel generado con el Creador de niveles de Casus Liber
+// Nivel escrito con el modo edición de Casus Liber
 window.LEVELS[17] = [
-  "_",
+  "",
   " (<)_",
   "  _",
   "    _",
@@ -11,10 +11,10 @@ window.LEVELS[17] = [
   "                 _",
   "                    _",
   "                         _",
-  "                              (^)_                                                                         ___",
+  "                              (^)_                                                                         (*)___",
   "                                   _                                                           ____",
   "                                        _                                              ____",
   "                                              _                                  ____",
   "                                                     _                     ___",
-  "                                                        (*)  _______"
+  "                                                          _______",
 ];
