@@ -7,18 +7,21 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"
     />
     <title>Casus Liber</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Playfair+Display:ital,wght@0,600;1,500&display=swap"
-      rel="stylesheet"
-    />
     <style>
+      @font-face {
+        font-family: "Bohemian Typewriter";
+        src: url("theme/Bohemian Typewriter.ttf") format("truetype");
+        font-display: swap;
+      }
+
       :root {
         --paper: #ffffff;
         --ink: #1c1c1c;
         --ink-faint: #8a8a8a;
         --pen-red: #b3261e;
         --gold: #a9812f;
+        --font-main: "Bohemian Typewriter", monospace;
+        --font-editor: "Bohemian Typewriter", monospace;
       }
       * {
         box-sizing: border-box;
@@ -32,7 +35,7 @@
       }
       body {
         background: var(--paper);
-        font-family: "Special Elite", monospace;
+        font-family: var(--font-main);
         color: var(--ink);
         -webkit-tap-highlight-color: transparent;
       }
@@ -57,9 +60,9 @@
         width: min(92vw, 360px);
       }
       .titlebar h1 {
-        font-family: "Playfair Display", serif;
-        font-style: italic;
-        font-weight: 900;
+        font-family: var(--font-main);
+        font-style: normal;
+        font-weight: 700;
         font-size: clamp(16px, 3.8vw, 22px);
         letter-spacing: 0.5px;
         margin: 0 0 2px;
@@ -106,8 +109,8 @@
         backdrop-filter: blur(2px);
       }
       .overlay h2 {
-        font-family: "Playfair Display", serif;
-        font-style: italic;
+        font-family: var(--font-main);
+        font-style: normal;
         font-size: 28px;
         margin: 0;
       }
@@ -120,7 +123,7 @@
       }
       .btn {
         margin-top: 8px;
-        font-family: "Special Elite", monospace;
+        font-family: var(--font-main);
         background: var(--pen-red);
         color: #fff;
         border: none;
@@ -143,7 +146,7 @@
         top: max(16px, env(safe-area-inset-top));
         left: 14px;
         z-index: 5;
-        font-family: "Special Elite", monospace;
+        font-family: var(--font-main);
         font-size: 10px;
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -183,7 +186,7 @@
         opacity: 0;
       }
       .help-text {
-        font-family: "Special Elite", monospace;
+        font-family: var(--font-main);
         font-size: 11px;
         color: var(--ink);
         letter-spacing: 0.3px;
@@ -197,8 +200,8 @@
         gap: 12px;
       }
       .help-or {
-        font-family: "Playfair Display", serif;
-        font-style: italic;
+        font-family: var(--font-main);
+        font-style: normal;
         font-size: 11px;
         color: var(--ink);
       }
@@ -212,7 +215,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: "Special Elite", monospace;
+        font-family: var(--font-main);
         font-size: 11px;
         font-weight: bold;
         color: #333;
@@ -243,7 +246,7 @@
         border: 1px solid rgba(28, 28, 28, 0.16);
         padding: 8px 16px;
         border-radius: 16px;
-        font-family: "Special Elite", monospace;
+        font-family: var(--font-main);
         font-size: 11px;
         letter-spacing: 0.3px;
         color: var(--ink);
@@ -256,22 +259,25 @@
         transition: opacity 0.6s ease;
       }
       /* ================= MODO EDICIÓN (escribir un nivel adentro del juego) =================
-         Toda la interfaz del editor usa la misma paleta y la misma tipografía
-         que el juego (papel blanco, tinta, rojo de lapicera): la idea es que
-         editar se sienta como seguir jugando, no como abrir otro programa. */
+         Misma paleta que el juego: papel blanco y tinta negra, nada de color.
+         Como no hay rojo para marcar lo activo, la jerarquía se hace con lo
+         mismo que usa una página escrita: peso, subrayado y, para lo que está
+         encendido, invertir el bloque (tinta llena con la letra en blanco).
+
+         La letra de la interfaz sale de --font-editor, definida arriba en
+         :root. Ahí se cambia de manuscrita a máquina de escribir en un solo
+         lugar; los tamaños de acá abajo están calibrados para la manuscrita,
+         que tiene la panza más chica y necesita un par de píxeles más. */
       .editor-banner {
         position: fixed;
         top: max(16px, env(safe-area-inset-top));
         left: 14px;
         z-index: 8;
-        font-family: "Special Elite", monospace;
-        font-size: 10px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: #fff;
-        background: var(--pen-red);
-        padding: 4px 9px;
-        opacity: 0.85;
+        font-family: var(--font-editor);
+        font-size: 15px;
+        color: var(--paper);
+        background: var(--ink);
+        padding: 2px 10px 3px;
         pointer-events: none;
       }
       .editor-caretinfo {
@@ -279,27 +285,25 @@
         top: max(16px, env(safe-area-inset-top));
         right: 14px;
         z-index: 8;
-        font-family: "Special Elite", monospace;
-        font-size: 10px;
-        letter-spacing: 1px;
+        font-family: var(--font-editor);
+        font-size: 14px;
         color: var(--ink-faint);
         pointer-events: none;
       }
       .editor-flash {
         position: fixed;
-        top: calc(max(16px, env(safe-area-inset-top)) + 26px);
+        top: calc(max(16px, env(safe-area-inset-top)) + 28px);
         left: 14px;
         z-index: 8;
-        font-family: "Special Elite", monospace;
-        font-size: 11px;
-        letter-spacing: 0.5px;
-        color: var(--pen-red);
+        font-family: var(--font-editor);
+        font-size: 16px;
+        color: var(--ink);
         pointer-events: none;
         opacity: 0;
         transition: opacity 0.35s ease;
       }
       .editor-flash.show {
-        opacity: 0.9;
+        opacity: 0.85;
       }
       /* barra de herramientas: una tira de texto al pie, sin cajas ni iconos */
       .editor-bar {
@@ -312,74 +316,77 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: center;
-        gap: 4px 14px;
-        padding: 9px 14px calc(9px + env(safe-area-inset-bottom));
+        gap: 2px 16px;
+        padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
         background: rgba(255, 255, 255, 0.93);
         border-top: 1px solid rgba(28, 28, 28, 0.14);
         backdrop-filter: blur(2px);
       }
       .ed-btn {
-        font-family: "Special Elite", monospace;
-        font-size: 11px;
-        letter-spacing: 0.6px;
-        text-transform: uppercase;
-        color: var(--ink);
+        font-family: var(--font-editor);
+        font-size: 16px;
+        line-height: 1.2;
+        color: rgba(28, 28, 28, 0.6);
         background: none;
         border: none;
         border-bottom: 1px solid transparent;
-        padding: 3px 2px;
+        padding: 2px 6px;
         cursor: pointer;
         white-space: nowrap;
       }
       .ed-btn:hover {
-        color: var(--pen-red);
-        border-bottom-color: var(--pen-red);
+        color: var(--ink);
+        border-bottom-color: var(--ink);
       }
+      /* el botón de probar: siempre subrayado, como algo remarcado a mano */
       .ed-btn.primary {
-        color: var(--pen-red);
-        font-weight: bold;
+        color: var(--ink);
+        font-weight: 700;
+        border-bottom-color: var(--ink);
       }
+      /* encendido = bloque invertido; se distingue del hover sin usar color */
       .ed-btn.on {
-        color: var(--pen-red);
-        border-bottom-color: var(--pen-red);
+        color: var(--paper);
+        background: var(--ink);
+        border-bottom-color: var(--ink);
       }
       .ed-btn small {
-        font-size: 9px;
-        opacity: 0.5;
-        margin-left: 4px;
-        text-transform: none;
-        letter-spacing: 0;
+        font-size: 13px;
+        opacity: 0.45;
+        margin-left: 5px;
+      }
+      .ed-btn.on small {
+        opacity: 0.7;
       }
       .editor-bar.testing .writeonly {
         display: none;
       }
       .ed-sep {
         width: 1px;
-        height: 14px;
+        height: 15px;
         background: rgba(28, 28, 28, 0.16);
       }
       .ed-field {
-        font-family: "Special Elite", monospace;
-        font-size: 11px;
-        color: var(--ink);
-        letter-spacing: 0.5px;
+        font-family: var(--font-editor);
+        font-size: 16px;
+        color: rgba(28, 28, 28, 0.6);
       }
       .ed-field input {
-        font-family: "Special Elite", monospace;
-        font-size: 11px;
-        color: var(--pen-red);
-        width: 34px;
+        font-family: var(--font-editor);
+        font-size: 16px;
+        color: var(--ink);
+        width: 36px;
         text-align: center;
         background: none;
         border: none;
         border-bottom: 1px solid rgba(28, 28, 28, 0.3);
-        padding: 2px 0;
+        padding: 1px 0;
       }
       .ed-field input:focus {
         outline: none;
-        border-bottom-color: var(--pen-red);
+        border-bottom-color: var(--ink);
       }
-      /* panel de "abrir nivel": lista de los niveles que ya tiene el juego */
+      /* panel de "abrir nivel" y de "enviar": una hoja apoyada sobre la otra */
       .editor-panel {
         position: fixed;
         inset: 0;
@@ -400,17 +407,23 @@
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.1);
       }
       .editor-panel h2 {
-        font-family: "Playfair Display", serif;
-        font-style: italic;
+        font-family: var(--font-main);
+        font-style: normal;
         font-size: 20px;
-        margin: 0 0 4px;
+        margin: 0 0 6px;
       }
       .editor-panel p {
-        font-family: "Special Elite", monospace;
-        font-size: 11px;
+        font-family: var(--font-editor);
+        font-size: 15px;
         color: var(--ink-faint);
         margin: 0 0 14px;
-        line-height: 1.5;
+        line-height: 1.45;
+      }
+      /* los nombres de archivo sí van en máquina de escribir: es texto de
+         código, no una anotación al margen */
+      .editor-panel code {
+        font-family: var(--font-main);
+        font-size: 12px;
       }
       .editor-panel .levels {
         display: flex;
@@ -419,50 +432,54 @@
         margin-bottom: 16px;
       }
       .ed-chip {
-        font-family: "Special Elite", monospace;
-        font-size: 11px;
-        color: var(--ink);
+        font-family: var(--font-editor);
+        font-size: 15px;
+        line-height: 1.2;
+        color: rgba(28, 28, 28, 0.7);
         background: none;
         border: 1px solid rgba(28, 28, 28, 0.22);
-        padding: 5px 9px;
+        padding: 4px 10px;
         cursor: pointer;
       }
       .ed-chip:hover {
-        border-color: var(--pen-red);
-        color: var(--pen-red);
+        border-color: var(--ink);
+        color: var(--ink);
+      }
+      .ed-chip:disabled {
+        opacity: 0.4;
+        cursor: default;
       }
       .ed-label {
         display: block;
-        font-family: "Special Elite", monospace;
-        font-size: 11px;
+        font-family: var(--font-editor);
+        font-size: 15px;
         color: var(--ink);
         margin-bottom: 12px;
       }
       .ed-input {
         display: block;
         width: 100%;
-        margin-top: 5px;
-        font-family: "Special Elite", monospace;
-        font-size: 12px;
+        margin-top: 4px;
+        font-family: var(--font-editor);
+        font-size: 16px;
         color: var(--ink);
         background: none;
         border: none;
         border-bottom: 1px solid rgba(28, 28, 28, 0.3);
-        padding: 4px 0;
+        padding: 3px 0;
         resize: vertical;
       }
       .ed-input:focus {
         outline: none;
-        border-bottom-color: var(--pen-red);
+        border-bottom-color: var(--ink);
       }
       .ed-status {
-        font-family: "Special Elite", monospace;
-        font-size: 11px;
-        color: var(--pen-red);
-        min-height: 15px;
+        font-family: var(--font-editor);
+        font-size: 15px;
+        color: var(--ink);
+        min-height: 18px;
         margin: 0 0 10px !important;
       }
-
       /* caja de texto invisible: solo existe para que en celular/tablet
          aparezca el teclado del sistema y se pueda escribir el nivel */
       #editorTypeProxy {
@@ -475,11 +492,11 @@
       }
       @media (max-width: 700px) {
         .editor-bar {
-          gap: 3px 10px;
-          padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+          gap: 2px 11px;
+          padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
         }
         .ed-btn {
-          font-size: 10px;
+          font-size: 15px;
         }
         .ed-btn small {
           display: none;
@@ -1311,10 +1328,54 @@
         const IDLE_MELT_THRESHOLD = 90; // ~1.5s a 60fps antes de empezar
         const MELT_RAMP_FRAMES = 260; // ~4.3s hasta el derretido máximo
 
-        const GRAVITY = 0.3;
+        const BASE_GRAVITY = 0.3;
+        const GRAVITY = BASE_GRAVITY;
+        // Techo de velocidad de caída. Además de calmar las caídas largas,
+        // tiene que quedar por debajo de 13 (alto del personaje 9 + alto de
+        // una plataforma 4): si el personaje avanza más que eso en un cuadro,
+        // puede atravesar una letra sin llegar a tocarla.
+        const MAX_FALL_SPEED = 12;
+        // ---------- Paracaídas ----------
+        // Manteniendo ↑ o W apretada mientras se cae, el personaje abre una
+        // especie de paracaídas: sigue bajando, apenas más despacio, lo justo
+        // para llegar a leer lo que dice en las plataformas de abajo. Funciona
+        // igual cayendo perdido.
+        //
+        // UNA SOLA PERILLA: 0 no hace nada, 1 lo deja casi flotando.
+        //   0.10 → 1.07× más lento (casi imperceptible)
+        //   0.20 → 1.15×  ← puesto acá
+        //   0.35 → 1.33×
+        //   0.45 → 1.5×
+        //   0.60 → 2.0×
+        //   0.80 → 3.5× (flotando)
+        //
+        // Va una sola perilla porque la velocidad de caída la deciden DOS
+        // cosas a la vez —con qué fuerza acelera y hasta qué velocidad puede
+        // llegar— y tocar una sola no alcanza: si bajás la aceleración pero
+        // dejás el techo alto, nunca llega al techo y cae lentísimo igual.
+        const PARACAIDAS = 0.2;
+        const READ_GRAVITY = GRAVITY * (1 - PARACAIDAS);
+        const MAX_READ_FALL_SPEED = MAX_FALL_SPEED * (1 - PARACAIDAS);
+        // Qué tan suave se abre si venía cayendo a plena velocidad. Cuanto más
+        // cerca de 1, más gradual; en 1 directamente no frena.
+        const READ_BRAKE = 0.9;
+        // La tecla que disparó un salto no sirve para planear ese mismo salto:
+        // hay que soltarla y volver a apretarla. Sin esto, cualquiera que deje
+        // el dedo puesto en la tecla de saltar estaría planeando sin querer, y
+        // todos los saltos del juego llegarían mucho más lejos de lo diseñado.
+        let jumpLatched = false;
+
         const MOVE_SPEED = 3.0;
         const JUMP_VELOCITY = -10.5;
         const FRICTION = 0.84;
+        // Al perder, el personaje NO se congela: sigue cayendo con las teclas
+        // activas y lo que lo saca de escena es que se va borrando, como tinta
+        // diluyéndose. Se cuenta por cuadros y no con un temporizador de reloj
+        // para que el borrado y la reaparición vayan siempre juntos, aunque la
+        // máquina se trabe un instante.
+        const DEATH_FADE_FRAMES = 55; // ~0.9 s a 60 cuadros por segundo
+        let dying = false;
+        let deathFrames = 0;
 
         const keys = {};
         window.addEventListener("keydown", (e) => {
@@ -1345,9 +1406,21 @@
         const touchStartY = new Map(); // por cada dedo (id de touch), dónde empezó el gesto (vertical)
         const touchStartX = new Map(); // por cada dedo (id de touch), dónde empezó el gesto (horizontal)
         const touchJumpedAlready = new Map(); // para no disparar más de un salto por gesto/dedo
+        const touchCurrentY = new Map(); // dónde está ahora cada dedo (vertical)
         let touchJumpBuffer = 0;
         let touchAxis = 0; // -1 (izquierda) a 1 (derecha), según el arrastre del dedo que controla el movimiento
         let dragTouchId = null; // qué dedo controla el movimiento horizontal ahora mismo
+
+        // En celular no existe "mantener apretada la tecla": el salto es un
+        // deslizamiento hacia arriba. El equivalente a sostener ↑ es dejar el
+        // dedo apoyado por encima de donde empezó el gesto.
+        function touchUpHeld() {
+          for (const [id, startY] of touchStartY) {
+            const y = touchCurrentY.get(id);
+            if (y !== undefined && startY - y > SWIPE_JUMP_PX) return true;
+          }
+          return false;
+        }
 
         function onTouchStart(e) {
           // escribiendo el nivel, tocar la pantalla lleva el cursor de
@@ -1361,6 +1434,7 @@
           for (const t of e.changedTouches) {
             touchStartY.set(t.identifier, t.clientY);
             touchStartX.set(t.identifier, t.clientX);
+            touchCurrentY.set(t.identifier, t.clientY);
             touchJumpedAlready.set(t.identifier, false);
             if (dragTouchId === null) dragTouchId = t.identifier;
           }
@@ -1368,6 +1442,7 @@
         function onTouchMove(e) {
           if (isWritingLevel()) return;
           for (const t of e.changedTouches) {
+            touchCurrentY.set(t.identifier, t.clientY);
             // salto: deslizar hacia arriba
             if (!touchJumpedAlready.get(t.identifier)) {
               const startY = touchStartY.get(t.identifier);
@@ -1391,6 +1466,7 @@
           for (const t of e.changedTouches) {
             touchStartY.delete(t.identifier);
             touchStartX.delete(t.identifier);
+            touchCurrentY.delete(t.identifier);
             touchJumpedAlready.delete(t.identifier);
             if (t.identifier === dragTouchId) {
               dragTouchId = null;
@@ -1426,6 +1502,10 @@
           player.vy = 0;
           player.onGround = false;
           player.facing = 1;
+          dying = false;
+          deathFrames = 0;
+          playerInk = 1; // lapicera recargada
+          inkDistance = 0;
           lastLandedWordId = null;
           trail = [];
         }
@@ -1435,7 +1515,27 @@
         let camX = getTargetCamX(),
           camY = player.y - viewH / 2 + player.h / 2;
         let gameState = "playing"; // playing
-        let trail = [];
+        // ---------- La tinta del personaje ----------
+        // El personaje es una lapicera con carga limitada. Moverse gasta tinta
+        // y deja el trazo dibujado en la hoja: el rastro no es un adorno que
+        // se desvanece, es lo que escribiste, y se queda. Cuando la carga se
+        // termina el personaje se borra y perdiste.
+        //
+        // INK_RANGE = cuántos píxeles de recorrido da un tanque lleno. De
+        // referencia, cruzar de punta a punta tus niveles en línea recta:
+        // los chicos ~700 px, el 15 (el más grande) ~2000 px. O sea que con
+        // 8000 se puede dar unas cuantas vueltas antes de quedarse seco.
+        const INK_RANGE = 8000;
+        // Gasto por cuadro aunque no se mueva. En 0 quedarse quieto es gratis;
+        // subilo (0.0005 ≈ un tanque en 33 s parado) para meter apuro.
+        const INK_TIME_DRAIN = 0;
+        const PEN_WIDTH = 1.7; // grosor del trazo
+        const PEN_ALPHA = 0.9;
+        const INK_POINT_EVERY = 2.5; // px entre punto y punto del trazo
+        let playerInk = 1; // 1 = tanque lleno, 0 = se borró
+        let inkDistance = 0;
+        let trail = []; // los puntos del trazo dibujado en esta vida
+        let trailIdleFrames = 0;
         let navCooldown = 0;
         let transitioning = false;
         const HIT_ANIM_FRAMES = 60; // 60 frames ≈ 1 segundo a 60fps
@@ -1580,6 +1680,21 @@
           // es que se vuelva a disparar el cambio de página o la muerte otra vez.
           if (gameState !== "playing") return;
 
+          // Perdido: sigue corriendo toda la física de siempre —gravedad,
+          // teclas, envión— así que el personaje se cae manejable, dando
+          // manotazos en el aire. Lo único que se agrega es el contador del
+          // desvanecimiento; cuando termina de borrarse, reaparece.
+          if (dying) {
+            deathFrames++;
+            if (deathFrames >= DEATH_FADE_FRAMES) {
+              resetPlayerToPageStart();
+              camX = getTargetCamX();
+              camY = player.y - viewH / 2 + player.h / 2;
+              if (hudMsg) hudMsg.textContent = "";
+              return;
+            }
+          }
+
           // input horizontal
           const moveAxis = Math.max(
             -1,
@@ -1602,22 +1717,45 @@
           player.vx = Math.max(-MOVE_SPEED, Math.min(MOVE_SPEED, player.vx));
           player.vx *= FRICTION;
 
+          // ¿está pedida la tecla de arriba en este momento?
+          const upHeld =
+            keys[" "] ||
+            keys["ArrowUp"] ||
+            keys["w"] ||
+            keys["W"] ||
+            touchUpHeld();
+
           if (touchJumpBuffer > 0) touchJumpBuffer--;
-          if (
-            (keys[" "] ||
-              keys["ArrowUp"] ||
-              keys["w"] ||
-              keys["W"] ||
-              touchJumpBuffer > 0) &&
-            player.onGround
-          ) {
+          if ((upHeld || touchJumpBuffer > 0) && player.onGround) {
             player.vy = JUMP_VELOCITY;
             player.onGround = false;
             touchJumpBuffer = 0;
+            jumpLatched = true; // esta pulsación ya se gastó saltando
           }
+          if (!upHeld) jumpLatched = false; // soltó: la próxima ya sirve para planear
 
-          player.vy += GRAVITY;
-          if (player.vy > 16) player.vy = 16;
+          // Leyendo: cayendo, con arriba apretada, y siempre que esa pulsación
+          // no sea la misma que disparó el salto. Frena de golpe si venía
+          // rápido —como abrir un paracaídas— y después baja de a poco.
+          const leyendo =
+            !player.onGround && player.vy > 0 && upHeld && !jumpLatched;
+
+          if (leyendo) {
+            if (player.vy > MAX_READ_FALL_SPEED) {
+              player.vy *= READ_BRAKE;
+              if (player.vy < MAX_READ_FALL_SPEED) {
+                player.vy = MAX_READ_FALL_SPEED;
+              }
+            } else {
+              player.vy += READ_GRAVITY;
+              if (player.vy > MAX_READ_FALL_SPEED) {
+                player.vy = MAX_READ_FALL_SPEED;
+              }
+            }
+          } else {
+            player.vy += GRAVITY;
+            if (player.vy > MAX_FALL_SPEED) player.vy = MAX_FALL_SPEED;
+          }
 
           // mover en X y resolver colisión
           player.x += player.vx;
@@ -1667,16 +1805,34 @@
             }
           }
 
-          // rastro de tinta
-          if (Math.random() < 0.5) {
-            trail.push({
-              x: player.x + player.w / 2,
-              y: player.y + player.h / 2,
-              life: 1,
-            });
+          // ---------- El trazo de la lapicera ----------
+          // Se guarda un punto cada tantos píxeles recorridos, no cada cuadro:
+          // así el trazo tiene el mismo grosor y la misma densidad yendo rápido
+          // o despacio, como la línea de una lapicera de verdad.
+          const avance = Math.hypot(player.vx, player.vy);
+          if (!dying) {
+            if (avance > 0.15) {
+              trailIdleFrames = 0;
+              inkDistance += avance;
+              if (inkDistance >= INK_POINT_EVERY) {
+                inkDistance -= INK_POINT_EVERY;
+                trail.push({
+                  // temblor mínimo: una línea perfecta delata que la trazó una
+                  // máquina y no una mano apoyada sobre el papel
+                  x: player.x + player.w / 2 + (Math.random() - 0.5) * 0.7,
+                  y: player.y + player.h / 2 + (Math.random() - 0.5) * 0.7,
+                });
+              }
+            } else {
+              trailIdleFrames++;
+              if (trailIdleFrames > 2) {
+                trail = [];
+              }
+            }
+            // y eso mismo es lo que se gasta
+            playerInk -= avance / INK_RANGE + INK_TIME_DRAIN;
+            if (playerInk < 0) playerInk = 0;
           }
-          trail.forEach((t) => (t.life -= 0.03));
-          trail = trail.filter((t) => t.life > 0);
 
           // seguimiento de inactividad: si está parado, en el suelo y casi
           // sin moverse del mismo punto, suma frames quietos; en cuanto se
@@ -1770,26 +1926,31 @@
           // (se quitó la meta por contacto con el último caracter: el único
           // modo de cambiar de nivel es tocando las flechas de navegación)
 
-          // caída al vacío
+          // ---------- Perder ----------
+          // Dos maneras: caerse de la hoja, o quedarse sin tinta. La segunda
+          // no es un accidente del recorrido sino la consecuencia de haberlo
+          // escrito: se te acabó la lapicera.
+          const seQuedoSinTinta = playerInk <= 0;
           if (
             !transitioning &&
-            (player.y > page.worldBottom ||
+            !dying &&
+            (seQuedoSinTinta ||
+              player.y > page.worldBottom ||
               player.x < -80 ||
               player.x > page.worldWidth + 80)
           ) {
+            dying = true;
+            deathFrames = 0;
             deaths++;
             const hudDeaths = document.getElementById("hudDeaths");
             if (hudDeaths) hudDeaths.textContent = deaths;
-            resetPlayerToPageStart();
-            camX = getTargetCamX();
-            camY = player.y - viewH / 2 + player.h / 2;
             if (hudMsg) {
-              hudMsg.textContent = "caíste en el blanco...";
-              setTimeout(() => {
-                if (hudMsg) hudMsg.textContent = "";
-              }, 1200);
+              hudMsg.textContent = seQuedoSinTinta
+                ? "te quedaste sin tinta..."
+                : "caíste en el blanco...";
             }
-            return;
+            // no hay return: desde acá el personaje sigue cayendo y
+            // borrándose, y la reaparición la dispara el contador de arriba
           }
         }
 
@@ -1842,13 +2003,40 @@
             );
           }
 
+          // ---------- El trazo de la lapicera ----------
+          // Va DEBAJO de las letras a propósito: la tinta que dejás no tiene
+          // que taparte el texto de las plataformas, que es justamente lo que
+          // hay que poder leer para jugar.
+          //
+          // Es una única línea continua, no un reguero de gotas: una lapicera
+          // apoyada sobre el papel deja trazo, no salpicaduras. Y no se
+          // desvanece, porque la tinta en el papel no se va: queda ahí hasta
+          // que se reinicia el nivel.
+          if (trail.length > 1) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(28,28,28,${PEN_ALPHA})`;
+            ctx.lineWidth = PEN_WIDTH;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(trail[0].x, trail[0].y);
+            for (let i = 1; i < trail.length; i++) {
+              const a = trail[i - 1],
+                b = trail[i];
+              ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+            }
+            ctx.lineTo(trail[trail.length - 1].x, trail[trail.length - 1].y);
+            ctx.stroke();
+            ctx.restore();
+          }
+
           // letras / plataformas
           ctx.textBaseline = "alphabetic";
           for (const p of page.platforms) {
             ctx.fillStyle = "#1c1c1c";
             ctx.font = p.isTitle
-              ? `900 ${FONT_SIZE + 2}px 'Special Elite', monospace`
-              : `${FONT_SIZE}px 'Special Elite', monospace`;
+              ? `900 ${FONT_SIZE + 2}px 'Bohemian Typewriter', monospace`
+              : `${FONT_SIZE}px 'Bohemian Typewriter', monospace`;
             ctx.fillText(p.char, p.x - 2, p.y + FONT_SIZE - 4);
             // pequeña base de plataforma (sombra bajo la letra)
             ctx.fillStyle = "rgba(28,28,28,0.15)";
@@ -1857,13 +2045,12 @@
 
           // bandera de meta
 
-          // rastro de tinta
-          for (const t of trail) {
-            ctx.fillStyle = `rgba(28,28,28,${t.life * 0.3})`;
-            ctx.beginPath();
-            ctx.arc(t.x, t.y, 2.2 * t.life, 0, Math.PI * 2);
-            ctx.fill();
-          }
+          // Cuánta tinta le queda al personaje: 1 entero, 0 borrado del todo.
+          // Al perder baja despacio y arrastra también al rastro, para que no
+          // quede una estela sólida detrás de algo que se está desvaneciendo.
+          const inkLeft = dying
+            ? Math.max(0, 1 - deathFrames / DEATH_FADE_FRAMES)
+            : 1;
 
           // jugador (mancha de tinta) y, en el editor, la marca fantasma de
           // dónde va a aparecer. Los dos usan el mismo dibujo (drawInkBlob):
@@ -1883,10 +2070,15 @@
                 (idleFrames - IDLE_MELT_THRESHOLD) / MELT_RAMP_FRAMES,
               ),
             );
+            // El personaje ES el medidor de tinta: a medida que se gasta se
+            // achica y se aclara, así no hace falta ningún marcador en
+            // pantalla. (inkLeft es otra cosa: es el borrarse al perder.)
             drawInkBlob(player.x + player.w / 2, player.y + player.h / 2, {
               melt: meltNow,
               facing: player.facing,
               speed: Math.min(Math.hypot(player.vx, player.vy) / 8, 1),
+              alpha: (0.4 + 0.6 * playerInk) * inkLeft,
+              scale: 0.5 + 0.5 * playerInk,
             });
           }
 
@@ -1918,6 +2110,7 @@
         //   alpha  0..1  opacidad general
         function drawInkBlob(cx, cy, opts) {
           const melt = (opts && opts.melt) || 0;
+          const scale = opts && opts.scale !== undefined ? opts.scale : 1;
           const facing = opts && opts.facing !== undefined ? opts.facing : 1;
           const inkSpeed = (opts && opts.speed) || 0;
           const alpha = opts && opts.alpha !== undefined ? opts.alpha : 1;
@@ -1927,7 +2120,7 @@
           ctx.globalAlpha = alpha;
 
           const inkT = performance.now() * 0.0007; // reloj de la mutación (lento)
-          const inkBaseR = 5;
+          const inkBaseR = 5 * scale;
           const inkPts = 9;
           const stretchX = facing >= 0 ? 1.04 : 0.96;
 
@@ -2254,24 +2447,33 @@
           const y = caretWorldY();
           const x = caretWorldX();
 
-          // banda tenue sobre el renglón que se está escribiendo
-          ctx.fillStyle = "rgba(179,38,30,0.045)";
+          // banda tenue sobre el renglón que se está escribiendo, del mismo
+          // gris que la sombra de las plataformas: se lee como el renglón de
+          // un cuaderno, no como un resaltador
+          ctx.fillStyle = "rgba(28,28,28,0.045)";
           ctx.fillRect(-2000, y - 6, page.worldWidth + 4000, LINE_H - 6);
 
           // aclaración al margen de que el primer renglón es el título
           if (editor.row === 0) {
             ctx.save();
             ctx.fillStyle = "rgba(28,28,28,0.35)";
-            ctx.font = "9px 'Special Elite', monospace";
+            ctx.font = "13px 'Bohemian Typewriter', monospace";
             ctx.textAlign = "right";
             ctx.fillText("título", COL_LEFT_START - 12, y + FONT_SIZE - 5);
             ctx.restore();
           }
 
-          // cursor de escritura (parpadea como una lapicera apoyada)
+          // cursor de escritura: una plumita de tinta apoyada en el papel,
+          // apenas más ancha abajo, que parpadea
           if (performance.now() % 1100 < 700) {
-            ctx.fillStyle = "rgba(179,38,30,0.9)";
-            ctx.fillRect(x - 1, y - 3, 1.6, FONT_SIZE + 3);
+            ctx.fillStyle = "rgba(28,28,28,0.85)";
+            ctx.beginPath();
+            ctx.moveTo(x - 0.6, y - 3);
+            ctx.lineTo(x + 0.9, y - 3);
+            ctx.lineTo(x + 1.4, y + FONT_SIZE);
+            ctx.lineTo(x - 1.1, y + FONT_SIZE);
+            ctx.closePath();
+            ctx.fill();
           }
         }
 
