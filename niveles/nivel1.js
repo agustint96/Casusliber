@@ -1,31 +1,18 @@
-// ---------- Nivel 1 — Casus Liber ----------
-// Este archivo solo contiene el array de líneas de ESTE nivel.
-// Lo genera el editor (botón de descarga en el chip del nivel).
-// index.html lo carga con <script src="niveles/nivel1.js"></script>
-// ANTES de su script principal, y usa lo que haya en window.LEVELS.
+// Nivel generado con el Creador de niveles de Casus Liber
 window.LEVELS[0] = [
-  "Podes caer libremente",
+  "(^)                                                                             ___(*)",
   "",
-  "Más abajo                      Más lejos",
+  "                                                                              __",
   "",
-  "también hay escaleritas      ee",
-  "                               fff",
-  "                                  ggg",
+  "                                                                            __",
+  "",
+  "(<)___                                                                   ___",
   "",
   "",
-  "",
-  "hay plataformas             —--------------------",
-  "",
-  "                          ",
-  "y todo lo que puedas hacer con texto",
-  " ",
+  "                                                                      ___",
   "",
   "",
   "",
-  "__",
-  "          __",
-  "      __",
-  "   __                  ___",
-  "                                             ",
-  "____________________",
+  "               ____    ____      ____    ____     ____     ________",
 ];
+window.LEVEL_TITLES[0] = "Este es mi nivel creado con el creador nuevo";

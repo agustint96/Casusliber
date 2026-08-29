@@ -213,21 +213,113 @@
         font-size: 10px;
         color: var(--ink-faint);
       }
-      .flagbtn {
+      .badges {
         flex: 0 0 auto;
-        width: 26px;
-        height: 22px;
-        font-size: 11px;
-        border: 1px solid rgba(28, 28, 28, 0.25);
-        background: #fff;
+        width: 44px;
+        font-size: 12px;
+        letter-spacing: 2px;
         color: var(--ink-faint);
-        cursor: pointer;
-        line-height: 1;
       }
-      .flagbtn.active {
-        background: var(--pen-red);
-        border-color: var(--pen-red);
-        color: #fff;
+      .badges .b-spawn {
+        color: var(--gold);
+      }
+      .badges .b-prev,
+      .badges .b-next {
+        color: var(--pen-red);
+      }
+
+      /* ---------- panel de marcadores (spawn / anterior / siguiente) ---------- */
+      .marker-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--paper-line);
+      }
+      .marker-row:last-child {
+        border-bottom: none;
+      }
+      .marker-icon {
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        border: 1px solid rgba(28, 28, 28, 0.15);
+        background: #fffefb;
+      }
+      .marker-row[data-marker="spawn"] .marker-icon {
+        color: var(--gold);
+      }
+      .marker-row[data-marker="prev"] .marker-icon,
+      .marker-row[data-marker="next"] .marker-icon {
+        color: var(--pen-red);
+      }
+      .marker-info {
+        flex: 1 1 auto;
+        min-width: 160px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .marker-info b {
+        font-size: 13px;
+      }
+      .marker-status {
+        font-size: 11px;
+        color: var(--ink-faint);
+      }
+      .marker-status.is-set {
+        color: var(--pen-red);
+        font-weight: bold;
+      }
+      .marker-actions {
+        flex: 0 0 auto;
+        display: flex;
+        gap: 8px;
+      }
+      @media (max-width: 640px) {
+        .marker-row {
+          flex-wrap: wrap;
+        }
+        .marker-actions {
+          width: 100%;
+          justify-content: flex-end;
+        }
+      }
+      .grid-stage {
+        position: relative;
+        flex: 1 1 auto;
+      }
+      .grid-markers {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+      }
+      .grid-marker {
+        position: absolute;
+        width: var(--cell-w);
+        height: var(--cell-h);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        line-height: 1;
+        border-radius: 3px;
+      }
+      .grid-marker.spawn {
+        background: rgba(169, 129, 47, 0.3);
+        color: var(--gold);
+        box-shadow: inset 0 0 0 1px rgba(169, 129, 47, 0.75);
+      }
+      .grid-marker.prev,
+      .grid-marker.next {
+        background: rgba(179, 38, 30, 0.18);
+        color: var(--pen-red);
+        box-shadow: inset 0 0 0 1px rgba(179, 38, 30, 0.65);
       }
       #gridArea {
         flex: 1 1 auto;
@@ -254,22 +346,118 @@
         min-width: 100%;
         width: max-content;
       }
-      .flagbtn.active {
-        background: var(--pen-red);
-        border-color: var(--pen-red);
-        color: #fff;
+      /* ---------- simulación (juego real, a pantalla completa) ---------- */
+      .sim-launch {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
       }
-
-      /* ---------- vista previa ---------- */
+      .btn.big {
+        padding: 13px 24px;
+        font-size: 13px;
+      }
+      .sim-hint {
+        font-size: 11px;
+        color: var(--ink-faint);
+        letter-spacing: 0.3px;
+      }
+      #simOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+      }
+      #simOverlay.hidden {
+        display: none;
+      }
+      #simOverlay iframe {
+        flex: 1 1 auto;
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+      }
+      .sim-controls {
+        position: fixed;
+        top: max(14px, env(safe-area-inset-top));
+        right: 14px;
+        z-index: 1001;
+        display: flex;
+        gap: 8px;
+      }
+      .sim-controls button {
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        border: 1px solid rgba(28, 28, 28, 0.25);
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--ink);
+        padding: 7px 12px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .sim-controls button:hover {
+        background: #fff;
+      }
+      .sim-controls button.close {
+        color: var(--pen-red);
+        border-color: rgba(179, 38, 30, 0.4);
+      }
+      /* ---------- vista previa (canvas) ---------- */
+      .preview-wrap {
+        position: relative;
+        border: 1px solid rgba(28, 28, 28, 0.12);
+        max-height: 480px;
+        overflow: auto;
+        background: #fffdf9;
+      }
       #previewCanvas {
         display: block;
-        background: var(--paper);
-        border: 1px solid rgba(28, 28, 28, 0.12);
-        max-width: 100%;
       }
-      .preview-scroll {
-        overflow: auto;
-        max-height: 620px;
+      .preview-empty {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: var(--ink-faint);
+        font-size: 12px;
+        letter-spacing: 0.5px;
+        text-align: center;
+        padding: 20px;
+        pointer-events: none;
+      }
+      .preview-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        margin-top: 10px;
+        font-size: 11px;
+        color: var(--ink-faint);
+        letter-spacing: 0.3px;
+        align-items: center;
+      }
+      .preview-legend .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+      .preview-legend .dot.spawn {
+        background: var(--gold);
+      }
+      .preview-legend .dot.nav {
+        background: var(--pen-red);
+        border-radius: 2px;
+      }
+      .preview-legend .dot.fall {
+        background: rgba(179, 38, 30, 0.5);
       }
       .help {
         font-size: 12px;
@@ -351,7 +539,7 @@
           </div>
         </div>
         <p class="stats" id="statsLine">
-          0 renglones con texto · 0 caracteres · sin flecha de salida marcada
+          0 renglones con texto · 0 caracteres · ancho máximo 0 columnas
         </p>
       </section>
 
@@ -364,41 +552,141 @@
           columnas: escribí, pegá texto largo, o hacé Enter para bajar de
           renglón, y el lienzo se acomoda automáticamente.
         </p>
-        <p class="help">
-          Para marcar <b>exactamente dónde</b> va la flecha de "siguiente
-          nivel", escribí <b>-&gt;</b> justo a la derecha del carácter que
-          quieras: se borra solo y la flecha queda pegada ahí mismo (también
-          podés usar el botón <b>▶</b> de la izquierda, que la pone al final del
-          texto de ese renglón). Sin marca, el juego la calcula sola en el
-          último renglón con contenido.
-        </p>
-        <p class="help">
-          Para marcar <b>dónde aparece el personaje</b> al arrancar el nivel,
-          escribí <b>&lt;-</b> justo a la derecha del carácter donde querés que
-          caiga (también se borra solo; podés usar el botón <b>★</b> de la
-          izquierda, que lo pone al principio de ese renglón). Sin marca,
-          aparece arriba a la izquierda del primer renglón (o abajo a la
-          izquierda si tildaste "crece hacia arriba").
-        </p>
         <div class="grid-editor">
           <div class="gutter" id="gutter"></div>
-          <textarea
-            id="gridArea"
-            spellcheck="false"
-            autocomplete="off"
-            wrap="off"
-            rows="24"
-          ></textarea>
+          <div class="grid-stage">
+            <textarea
+              id="gridArea"
+              spellcheck="false"
+              autocomplete="off"
+              wrap="off"
+              rows="24"
+            ></textarea>
+            <div class="grid-markers" id="gridMarkers"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Marcadores especiales</h2>
+        <p class="help">
+          Hacé click con el mouse (o tocá) dentro de la pista, justo en el lugar
+          exacto donde querés que quede cada marcador —el cursor se para ahí—, y
+          después tocá su botón <b>Colocar en el cursor</b>. Así elegís
+          libremente dónde aparece el personaje y dónde va cada flecha, sin
+          escribir nada raro en el texto.
+        </p>
+        <div class="marker-row" data-marker="spawn">
+          <span class="marker-icon">★</span>
+          <div class="marker-info">
+            <b>Aparición del personaje</b>
+            <span class="marker-status" id="spawnStatus"></span>
+          </div>
+          <div class="marker-actions">
+            <button
+              class="btn secondary"
+              data-action="place"
+              data-marker="spawn"
+            >
+              Colocar en el cursor
+            </button>
+            <button
+              class="btn secondary"
+              data-action="remove"
+              data-marker="spawn"
+              disabled
+            >
+              Quitar
+            </button>
+          </div>
+        </div>
+        <div class="marker-row" data-marker="prev">
+          <span class="marker-icon">◀</span>
+          <div class="marker-info">
+            <b>Flecha "anterior"</b>
+            <span class="marker-status" id="prevStatus"></span>
+          </div>
+          <div class="marker-actions">
+            <button
+              class="btn secondary"
+              data-action="place"
+              data-marker="prev"
+            >
+              Colocar en el cursor
+            </button>
+            <button
+              class="btn secondary"
+              data-action="remove"
+              data-marker="prev"
+              disabled
+            >
+              Quitar
+            </button>
+          </div>
+        </div>
+        <div class="marker-row" data-marker="next">
+          <span class="marker-icon">▶</span>
+          <div class="marker-info">
+            <b>Flecha "siguiente"</b>
+            <span class="marker-status" id="nextStatus"></span>
+          </div>
+          <div class="marker-actions">
+            <button
+              class="btn secondary"
+              data-action="place"
+              data-marker="next"
+            >
+              Colocar en el cursor
+            </button>
+            <button
+              class="btn secondary"
+              data-action="remove"
+              data-marker="next"
+              disabled
+            >
+              Quitar
+            </button>
+          </div>
         </div>
       </section>
 
       <section class="panel">
         <h2>Vista previa</h2>
         <p class="help">
-          Así se va a ver dentro del juego (tipografía y espaciado reales).
+          Así se ve el nivel armado: cada carácter es una plataforma, tal como
+          las va a mostrar el juego real. Se actualiza sola a medida que
+          escribís. Si el nivel es muy grande, el recuadro tiene scroll propio
+          (alto y ancho quedan libres, sin límite).
         </p>
-        <div class="preview-scroll">
-          <canvas id="previewCanvas"></canvas>
+        <div class="preview-wrap">
+          <canvas id="previewCanvas" width="620" height="200"></canvas>
+          <div class="preview-empty" id="previewEmpty">
+            Empezá a escribir en la pista para ver el nivel acá
+          </div>
+        </div>
+        <div class="preview-legend">
+          <span><span class="dot spawn"></span>aparición del personaje</span>
+          <span><span class="dot nav"></span>flechas anterior / siguiente</span>
+          <span><span class="dot fall"></span>línea de caída al vacío</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Simulación</h2>
+        <p class="help">
+          Probá el nivel de verdad: esto abre el juego real
+          (<code>index.html</code>) a pantalla completa, cargado con lo que
+          tenés escrito ahora mismo en la pista, tal cual estás jugando. Movete
+          con las flechas o A/W/D, o deslizando el dedo si estás en el celular.
+        </p>
+        <div class="sim-launch">
+          <button class="btn big" id="simulateBtn">
+            ▶ Jugar en pantalla completa
+          </button>
+          <span class="sim-hint"
+            >Requiere que <code>index.html</code> esté en la misma carpeta que
+            este editor.</span
+          >
         </div>
       </section>
 
@@ -420,6 +708,18 @@
       </section>
     </div>
 
+    <div id="simOverlay" class="hidden">
+      <div class="sim-controls">
+        <button type="button" id="simReloadBtn">🔄 recargar con cambios</button>
+        <button type="button" class="close" id="simCloseBtn">✕ cerrar</button>
+      </div>
+      <iframe
+        id="simFrame"
+        title="Simulación · Casus Liber"
+        allow="fullscreen"
+      ></iframe>
+    </div>
+
     <script>
       (() => {
         const gridArea = document.getElementById("gridArea");
@@ -429,13 +729,13 @@
         const levelTitleInput = document.getElementById("levelTitle");
         const statsLine = document.getElementById("statsLine");
         const downloadBtn = document.getElementById("downloadBtn");
-        const canvas = document.getElementById("previewCanvas");
-        const ctx = canvas.getContext("2d");
 
-        let navRow = null; // fila (0-indexada) marcada con (*)
+        let navRow = null; // fila (0-indexada) marcada con (*) — flecha "siguiente"
         let navCol = null; // columna exacta (cantidad de caracteres antes del marcador)
         let spawnRow = null; // fila (0-indexada) marcada con (^) (aparición del personaje)
         let spawnCol = null; // columna exacta (cantidad de caracteres antes del marcador)
+        let prevRow = null; // fila (0-indexada) marcada con (<) — flecha "anterior"
+        let prevCol = null; // columna exacta (cantidad de caracteres antes del marcador)
         const growsUpInput = document.getElementById("growsUp");
 
         // Cantidad mínima de renglones que se muestran como "lienzo" vacío
@@ -457,10 +757,12 @@
           syncGrid();
         }
 
-        // ---------- gutter (números de renglón, contador, flecha) ----------
+        // ---------- gutter (números de renglón, contador, insignias) ----------
         // Se reconstruye a partir de un simple split de texto: nada de un
         // nodo del DOM por carácter, así que es instantáneo aunque el nivel
-        // tenga cientos de renglones.
+        // tenga cientos de renglones. Las insignias son solo informativas
+        // (no clickeables): para colocar o mover un marcador se usa el
+        // panel de "Marcadores especiales".
         function rebuildGutter(lines) {
           let html = "";
           const total = Math.max(lines.length, MIN_VISIBLE_ROWS);
@@ -470,13 +772,18 @@
             for (let i = 0; i < line.length; i++) {
               if (line[i] !== " ") count++;
             }
-            const marked = navRow === r;
-            const spawnMarked = spawnRow === r;
-            html += `<div class="gutter-row${marked || spawnMarked ? " row-marked" : ""}" data-row="${r}">
+            const spawnHere = spawnRow === r;
+            const prevHere = prevRow === r;
+            const nextHere = navRow === r;
+            const anyMarked = spawnHere || prevHere || nextHere;
+            let badges = "";
+            if (spawnHere) badges += `<span class="b-spawn">★</span>`;
+            if (prevHere) badges += `<span class="b-prev">◀</span>`;
+            if (nextHere) badges += `<span class="b-next">▶</span>`;
+            html += `<div class="gutter-row${anyMarked ? " row-marked" : ""}" data-row="${r}">
               <span class="rownum">${r + 1}</span>
               <span class="rowcount">${count}</span>
-              <button class="flagbtn${spawnMarked ? " active" : ""}" data-row="${r}" data-flag="spawn" title="Marcar como aparición inicial del personaje">★</button>
-              <button class="flagbtn${marked ? " active" : ""}" data-row="${r}" data-flag="nav" title="Marcar como salida (flecha →)">▶</button>
+              <span class="badges">${badges}</span>
             </div>`;
           }
           gutterEl.innerHTML = html;
@@ -489,80 +796,269 @@
           gridArea.style.height = gridArea.scrollHeight + "px";
         }
 
+        // Marcadores visibles directamente ENCIMA de la grilla (no solo en
+        // el margen izquierdo): un recuadro de color exactamente en la
+        // fila/columna donde quedó cada uno, superpuesto a la pista. Usa
+        // las mismas variables --cell-w/--cell-h que ya dibujan las rayitas
+        // guía de fondo, así que queda perfectamente alineado con el texto.
+        const gridMarkersEl = document.getElementById("gridMarkers");
+        function renderGridMarkers() {
+          const cellW =
+            parseFloat(
+              getComputedStyle(document.documentElement).getPropertyValue(
+                "--cell-w",
+              ),
+            ) || 20;
+          const cellH =
+            parseFloat(
+              getComputedStyle(document.documentElement).getPropertyValue(
+                "--cell-h",
+              ),
+            ) || 28;
+          function markerHtml(row, col, cls, glyph) {
+            if (row === null || col === null) return "";
+            const left = col * cellW;
+            const top = row * cellH;
+            return `<span class="grid-marker ${cls}" style="left:${left}px; top:${top}px;" title="${cls}: renglón ${row + 1}, columna ${col}">${glyph}</span>`;
+          }
+          gridMarkersEl.innerHTML =
+            markerHtml(spawnRow, spawnCol, "spawn", "★") +
+            markerHtml(prevRow, prevCol, "prev", "◀") +
+            markerHtml(navRow, navCol, "next", "▶");
+        }
+
         function syncGrid() {
           const lines = gridArea.value.split(/\r\n|\r|\n/);
           rebuildGutter(lines);
           autoGrow();
           updateAllStats();
+          updateMarkerStatuses();
+          renderGridMarkers();
           renderPreview();
         }
 
-        // Detecta si en el renglón "r" el usuario escribió "->" en dos
-        // caracteres consecutivos. Si lo encuentra: la borra del texto y
-        // marca ese renglón/columna como salida (la flecha va a quedar
-        // pegada justo a la derecha del carácter anterior a donde escribiste
-        // "->"). Devuelve true si modificó el texto.
-        function checkArrowMarker() {
-          const lines = gridArea.value.split(/\r\n|\r|\n/);
-          for (let r = 0; r < lines.length; r++) {
-            const idx = lines[r].indexOf("->");
-            if (idx !== -1) {
-              navRow = r;
-              navCol = idx;
-              lines[r] = lines[r].slice(0, idx) + lines[r].slice(idx + 2);
-              gridArea.value = lines.join("\n");
-              // recoloca el cursor justo donde quedó el marcador, en vez de
-              // dejarlo saltar al final del texto (que es lo que hace el
-              // navegador por default al reasignar .value)
-              let pos = 0;
-              for (let i = 0; i < r; i++) pos += lines[i].length + 1;
-              pos += idx;
-              gridArea.selectionStart = gridArea.selectionEnd = pos;
-              return true;
+        // Da la fila y columna (0-indexadas) donde está el cursor dentro de
+        // la pista ahora mismo. La columna es simplemente la cantidad de
+        // caracteres que hay antes del cursor en ese renglón (incluye
+        // espacios, igual que espera insertMarker al exportar).
+        function getCursorRowCol() {
+          const pos = gridArea.selectionStart;
+          const before = gridArea.value.slice(0, pos).split(/\r\n|\r|\n/);
+          const row = before.length - 1;
+          const col = before[before.length - 1].length;
+          return { row, col };
+        }
+
+        // Coloca (o mueve) el marcador "type" ("spawn" | "prev" | "next")
+        // exactamente donde está el cursor dentro de la pista.
+        function placeMarkerAtCursor(type) {
+          const { row, col } = getCursorRowCol();
+          if (type === "spawn") {
+            spawnRow = row;
+            spawnCol = col;
+          } else if (type === "prev") {
+            prevRow = row;
+            prevCol = col;
+          } else if (type === "next") {
+            navRow = row;
+            navCol = col;
+          }
+          syncGrid();
+        }
+
+        // Quita el marcador "type", volviendo al comportamiento por
+        // defecto (sin marca explícita).
+        function removeMarker(type) {
+          if (type === "spawn") {
+            spawnRow = null;
+            spawnCol = null;
+          } else if (type === "prev") {
+            prevRow = null;
+            prevCol = null;
+          } else if (type === "next") {
+            navRow = null;
+            navCol = null;
+          }
+          syncGrid();
+        }
+
+        // ---------- vista previa (canvas) ----------
+        // Dibuja el nivel tal como lo arma buildPage() en index.html: mismo
+        // ancho de carácter, mismo alto de línea, misma posición de flechas
+        // (con los mismos valores por defecto cuando no hay marcador
+        // colocado). No es una aproximación: es la misma cuenta, en un
+        // <canvas> aparte en vez de en el motor del juego.
+        const previewCanvas = document.getElementById("previewCanvas");
+        const previewCtx = previewCanvas.getContext("2d");
+        const previewEmpty = document.getElementById("previewEmpty");
+
+        function drawPreviewArrow(ctx, cx, cy, dir, active) {
+          const L = 14;
+          ctx.save();
+          ctx.globalAlpha = active ? 1 : 0.25;
+          ctx.translate(cx, cy);
+          ctx.scale(dir, 1);
+          ctx.fillStyle = "#b3261e";
+          ctx.beginPath();
+          ctx.moveTo(-L, -L * 0.07);
+          ctx.lineTo(L * 0.45, -L * 0.07);
+          ctx.lineTo(L * 0.45, -L * 0.32);
+          ctx.lineTo(L, 0);
+          ctx.lineTo(L * 0.45, L * 0.32);
+          ctx.lineTo(L * 0.45, L * 0.07);
+          ctx.lineTo(-L, L * 0.07);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        function renderPreview() {
+          // mismas constantes que usa index.html (CHAR_W, LINE_H, FONT_SIZE,
+          // PAGE_TOP, COL_LEFT_START, ARROW_L, NAV_GAP...) para que la
+          // posición de cada letra y cada flecha coincida con el juego real
+          const CHAR_W = 9,
+            LINE_H = 26,
+            FONT_SIZE = 14,
+            PAGE_TOP = 50,
+            LEFT = 60,
+            MIN_LINES = 3,
+            MIN_CHARS = 10,
+            NAV_GAP = 30,
+            NAV_BOX_W = 14 * 2 + 4;
+
+          const n = Number(levelNumInput.value) || 1;
+          const isFinal = isFinalInput.checked;
+          const typedTitle = levelTitleInput.value.trim();
+          // el nivel 1 (no final) siempre se llama "Casus liber" en el
+          // juego real, sin importar lo que se haya escrito acá
+          const displayTitle = !isFinal && n === 1 ? "Casus liber" : typedTitle;
+          const hasTitle = !!displayTitle;
+
+          const blocks = getLines();
+          const worldLines = [displayTitle, "", ...blocks];
+          const growsUp = growsUpInput.checked;
+
+          const linesPerCol = Math.max(MIN_LINES, worldLines.length);
+          const charsPerLine = Math.max(
+            MIN_CHARS,
+            ...worldLines.map((l) => l.length),
+          );
+
+          function rowY(r) {
+            const rr = growsUp ? linesPerCol - 1 - r : r;
+            return PAGE_TOP + rr * LINE_H;
+          }
+
+          // ---- posiciones de spawn / anterior / siguiente, con los mismos
+          // valores por defecto que usa index.html cuando no hay marcador ----
+          const spawnR = spawnRow !== null ? spawnRow + 2 : 0;
+          const spawnC = spawnRow !== null ? spawnCol : 0;
+          const prevR = prevRow !== null ? prevRow + 2 : spawnR;
+          const prevC = prevRow !== null ? prevCol : spawnC;
+
+          let nextR, nextC;
+          if (navRow !== null) {
+            nextR = navRow + 2;
+            nextC = navCol;
+          } else {
+            let found = null;
+            for (let i = blocks.length - 1; i >= 0 && !found; i--) {
+              const line = blocks[i] || "";
+              for (let c = line.length - 1; c >= 0; c--) {
+                if (line[c] !== " ") {
+                  found = { row: i + 2, col: c + 1 };
+                  break;
+                }
+              }
+            }
+            if (found) {
+              nextR = found.row;
+              nextC = found.col;
+            } else {
+              nextR = Math.round((linesPerCol - 1) / 2);
+              nextC = 0;
             }
           }
-          return false;
-        }
 
-        // Igual que checkArrowMarker, pero busca "<-" (dos caracteres
-        // consecutivos) y marca dónde aparece el personaje al arrancar el
-        // nivel, en vez de la flecha de salida.
-        function checkSpawnMarker() {
-          const lines = gridArea.value.split(/\r\n|\r|\n/);
-          for (let r = 0; r < lines.length; r++) {
-            const idx = lines[r].indexOf("<-");
-            if (idx !== -1) {
-              spawnRow = r;
-              spawnCol = idx;
-              lines[r] = lines[r].slice(0, idx) + lines[r].slice(idx + 2);
-              gridArea.value = lines.join("\n");
-              let pos = 0;
-              for (let i = 0; i < r; i++) pos += lines[i].length + 1;
-              pos += idx;
-              gridArea.selectionStart = gridArea.selectionEnd = pos;
-              return true;
+          const worldWidth = LEFT * 2 + charsPerLine * CHAR_W;
+          const worldBottom =
+            PAGE_TOP + (linesPerCol - 1) * LINE_H + LINE_H * 1.6;
+
+          previewCanvas.width = Math.max(320, Math.ceil(worldWidth));
+          previewCanvas.height = Math.ceil(worldBottom) + 60;
+
+          const ctx = previewCtx;
+          ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+          ctx.fillStyle = "#fffdf9";
+          ctx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+          // línea de "vacío / caída"
+          ctx.save();
+          ctx.strokeStyle = "rgba(179,38,30,0.35)";
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(0, worldBottom);
+          ctx.lineTo(previewCanvas.width, worldBottom);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = "rgba(179,38,30,0.6)";
+          ctx.font = '9px "Special Elite", monospace';
+          ctx.fillText("vacío · caída", 8, worldBottom - 4);
+          ctx.restore();
+
+          // letras / plataformas
+          ctx.textBaseline = "alphabetic";
+          for (let r = 0; r < worldLines.length; r++) {
+            const line = worldLines[r] || "";
+            const y = rowY(r);
+            const isTitleRow = r === 0 && hasTitle;
+            for (let i = 0; i < line.length; i++) {
+              const ch = line[i];
+              if (ch === " ") continue;
+              const x = LEFT + i * CHAR_W;
+              ctx.fillStyle = "#1c1c1c";
+              ctx.font = isTitleRow
+                ? `900 ${FONT_SIZE + 2}px "Special Elite", monospace`
+                : `${FONT_SIZE}px "Special Elite", monospace`;
+              ctx.fillText(ch, x - 2, y + FONT_SIZE - 4);
+              ctx.fillStyle = "rgba(28,28,28,0.15)";
+              ctx.fillRect(x, y + FONT_SIZE - 2, CHAR_W - 2, 2);
             }
           }
-          return false;
-        }
 
-        function lastContentCol(line) {
-          let end = line.length;
-          while (end > 0 && line[end - 1] === " ") end--;
-          return end;
-        }
+          // flecha "anterior" (no hace nada en el nivel 1: se muestra
+          // atenuada para avisar esa diferencia, igual que en el juego)
+          const prevActive = isFinal || n > 1;
+          const prevY = rowY(prevR);
+          const prevCenterX = LEFT + prevC * CHAR_W - NAV_GAP - NAV_BOX_W / 2;
+          drawPreviewArrow(ctx, prevCenterX, prevY, -1, prevActive);
 
-        function firstContentCol(line) {
-          for (let i = 0; i < line.length; i++) {
-            if (line[i] !== " ") return i;
-          }
-          return 0;
+          // flecha "siguiente"
+          const nextY = rowY(nextR);
+          const nextCenterX = LEFT + nextC * CHAR_W + NAV_GAP + NAV_BOX_W / 2;
+          drawPreviewArrow(ctx, nextCenterX, nextY, 1, true);
+
+          // aparición del personaje
+          const spawnY = rowY(spawnR);
+          const spawnX = LEFT + spawnC * CHAR_W + CHAR_W / 2;
+          ctx.save();
+          ctx.fillStyle = "#a9812f";
+          ctx.beginPath();
+          ctx.arc(spawnX, spawnY - 16, 7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.font = '900 10px "Special Elite", monospace';
+          ctx.textAlign = "center";
+          ctx.fillText("★", spawnX, spawnY - 12);
+          ctx.textAlign = "left";
+          ctx.restore();
+
+          previewEmpty.style.display =
+            blocks.some((l) => l.trim()) || hasTitle ? "none" : "flex";
         }
 
         // ---------- eventos ----------
         gridArea.addEventListener("input", () => {
-          checkArrowMarker();
-          checkSpawnMarker();
           syncGrid();
         });
 
@@ -570,29 +1066,18 @@
           gutterEl.scrollTop = gridArea.scrollTop;
         });
 
-        gutterEl.addEventListener("click", (e) => {
-          const btn = e.target.closest(".flagbtn");
-          if (!btn) return;
-          const r = Number(btn.dataset.row);
-          const lines = gridArea.value.split(/\r\n|\r|\n/);
-          if (btn.dataset.flag === "spawn") {
-            if (spawnRow === r) {
-              spawnRow = null;
-              spawnCol = null;
+        // Botones del panel "Marcadores especiales": Colocar en el cursor /
+        // Quitar, para cada uno de los tres marcadores.
+        document.querySelectorAll(".marker-row button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const type = btn.dataset.marker;
+            if (btn.dataset.action === "place") {
+              gridArea.focus();
+              placeMarkerAtCursor(type);
             } else {
-              spawnRow = r;
-              spawnCol = firstContentCol(lines[r] || ""); // por defecto: justo antes del primer carácter de la fila
+              removeMarker(type);
             }
-          } else {
-            if (navRow === r) {
-              navRow = null;
-              navCol = null;
-            } else {
-              navRow = r;
-              navCol = lastContentCol(lines[r] || ""); // por defecto: justo después del último carácter de la fila
-            }
-          }
-          syncGrid();
+          });
         });
 
         document.getElementById("clearBtn").addEventListener("click", () => {
@@ -602,15 +1087,55 @@
           navCol = null;
           spawnRow = null;
           spawnCol = null;
+          prevRow = null;
+          prevCol = null;
           levelTitleInput.value = "";
           growsUpInput.checked = false;
           syncGrid();
         });
 
+        growsUpInput.addEventListener("change", () => {
+          updateMarkerStatuses();
+          renderPreview();
+        });
+
         levelTitleInput.addEventListener("input", renderPreview);
         levelNumInput.addEventListener("input", renderPreview);
         isFinalInput.addEventListener("change", renderPreview);
-        growsUpInput.addEventListener("change", renderPreview);
+
+        // Actualiza el texto de estado ("sin marcar" / "renglón X, columna
+        // Y") y habilita/deshabilita el botón "Quitar" de cada uno de los
+        // tres marcadores especiales.
+        function updateMarkerStatuses() {
+          const rows = {
+            spawn: [spawnRow, spawnCol],
+            prev: [prevRow, prevCol],
+            next: [navRow, navCol],
+          };
+          const defaultText = {
+            spawn: growsUpInput.checked
+              ? "sin marcar · aparece por defecto abajo a la izquierda"
+              : "sin marcar · aparece por defecto arriba a la izquierda",
+            prev: "sin marcar · aparece por defecto pegada a la izquierda del personaje",
+            next: "sin marcar · aparece por defecto al final del último renglón con contenido",
+          };
+          for (const type of ["spawn", "prev", "next"]) {
+            const [row, col] = rows[type];
+            const statusEl = document.getElementById(`${type}Status`);
+            const removeBtn = document.querySelector(
+              `[data-action="remove"][data-marker="${type}"]`,
+            );
+            if (row === null) {
+              statusEl.textContent = defaultText[type];
+              statusEl.classList.remove("is-set");
+              removeBtn.disabled = true;
+            } else {
+              statusEl.textContent = `renglón ${row + 1}, columna ${col}`;
+              statusEl.classList.add("is-set");
+              removeBtn.disabled = false;
+            }
+          }
+        }
 
         function updateAllStats() {
           const lines = getLines();
@@ -628,21 +1153,7 @@
             if (rowHas) nonEmptyRows++;
             if (line.length > maxCols) maxCols = line.length;
           }
-          let navText;
-          if (navRow === null) {
-            navText = "sin flecha de salida marcada (se calcula sola)";
-          } else {
-            navText = `flecha de salida forzada en el renglón ${navRow + 1}, después del carácter ${navCol}`;
-          }
-          let spawnText;
-          if (spawnRow === null) {
-            spawnText = growsUpInput.checked
-              ? "aparición: default (abajo a la izquierda)"
-              : "aparición: default (arriba a la izquierda)";
-          } else {
-            spawnText = `aparición forzada en el renglón ${spawnRow + 1}, columna ${spawnCol}`;
-          }
-          statsLine.innerHTML = `<b>${nonEmptyRows}</b> renglones con texto · <b>${totalChars}</b> caracteres · ancho máximo <b>${maxCols}</b> columnas · ${navText} · ${spawnText}`;
+          statsLine.innerHTML = `<b>${nonEmptyRows}</b> renglones con texto · <b>${totalChars}</b> caracteres · ancho máximo <b>${maxCols}</b> columnas`;
         }
 
         // Inserta el literal "(*)" en la columna "col" de una línea (rellenando
@@ -656,140 +1167,120 @@
           return base.slice(0, col) + marker + base.slice(col);
         }
 
-        // ---------- vista previa (canvas, EXACTAMENTE los mismos valores que usa el juego real en index.html) ----------
-        // Estos números están copiados tal cual de las constantes de layout de index.html
-        // (FONT_SIZE, CHAR_W, LINE_H, PAGE_TOP, COL_LEFT_START, PLATFORM_W, PLATFORM_H)
-        // para que lo que se ve acá sea un espejo fiel del escenario, no una aproximación.
-        const CHAR_W = 9,
-          LINE_H = 26,
-          FONT_SIZE = 14;
-        const PAGE_TOP = 90,
-          COL_LEFT_START = 60;
-        const PLATFORM_W = 7.5,
-          PLATFORM_H = 4;
-        // factor de zoom SOLO visual (agranda el dibujo para que se pueda editar
-        // cómodamente), pero mantiene intactas todas las proporciones reales
-        const PREVIEW_ZOOM = 1.6;
+        // ---------- simulación real (index.html a pantalla completa) ----------
+        // En vez de dibujar una aproximación en un <canvas>, esto abre el
+        // motor del juego de verdad (index.html) en un iframe a pantalla
+        // completa, pasándole el nivel actual por sessionStorage.
+        // index.html detecta "?preview=1" y arranca con ese único nivel en
+        // vez de cargar niveles/*.js. Ver el bloque equivalente al
+        // principio de index.html.
+        const simOverlay = document.getElementById("simOverlay");
+        const simFrame = document.getElementById("simFrame");
+        const simulateBtn = document.getElementById("simulateBtn");
+        const simReloadBtn = document.getElementById("simReloadBtn");
+        const simCloseBtn = document.getElementById("simCloseBtn");
 
-        // Mínimos que también usa el motor del juego (index.html) cuando un
-        // nivel es muy chico o está vacío: así la vista previa coincide
-        // siempre con lo que el juego realmente va a dibujar.
-        const MIN_CHARS_PER_LINE = 10;
-        const MIN_LINES_PER_COL = 3;
-
-        function renderPreview() {
-          const lines = getLines();
-          const hasTitle = !!levelTitleInput.value.trim();
-          const growsUp = growsUpInput.checked;
-          const allLinesForSize = [
-            hasTitle ? levelTitleInput.value.trim() : "",
-            "",
-            ...lines,
-          ];
-          // El tamaño del "mundo" se calcula del CONTENIDO real (como hace
-          // el juego), no del tamaño de la grilla de edición: si tu grilla
-          // es de 200 columnas pero el nivel solo usa 40, la vista previa
-          // (y el juego) van a ser de 40, no de 200.
-          const displayRows = Math.max(
-            MIN_LINES_PER_COL,
-            allLinesForSize.length,
-          );
-          const contentCharsPerLine = Math.max(
-            MIN_CHARS_PER_LINE,
-            ...allLinesForSize.map((l) => (l || "").length),
-          );
-          // dimensiones "de mundo" (sin zoom), calcadas de buildPage() en index.html
-          const worldWidth = COL_LEFT_START * 2 + contentCharsPerLine * CHAR_W;
-          const worldHeight =
-            PAGE_TOP + (displayRows - 1) * LINE_H + LINE_H * 1.6;
-
-          // misma idea que rowY() en index.html: si el nivel "crece hacia
-          // arriba", el renglón 0 (título) va abajo del todo y los
-          // siguientes se apilan subiendo
-          function rowY(r) {
-            const rr = growsUp ? displayRows - 1 - r : r;
-            return PAGE_TOP + rr * LINE_H;
-          }
-
-          const width = worldWidth * PREVIEW_ZOOM;
-          const height = worldHeight * PREVIEW_ZOOM;
-          const dpr = Math.min(window.devicePixelRatio || 1, 2);
-          canvas.width = Math.round(width * dpr);
-          canvas.height = Math.round(height * dpr);
-          canvas.style.width = width + "px";
-          canvas.style.height = height + "px";
-          // dpr para nitidez + PREVIEW_ZOOM para agrandar, sin tocar ninguna
-          // proporción real: todo lo que sigue se dibuja en coordenadas "de mundo"
-          ctx.setTransform(dpr * PREVIEW_ZOOM, 0, 0, dpr * PREVIEW_ZOOM, 0, 0);
-
-          ctx.clearRect(0, 0, worldWidth, worldHeight);
-          ctx.fillStyle = "#fffdf9";
-          ctx.fillRect(0, 0, worldWidth, worldHeight);
-
-          ctx.strokeStyle = "rgba(28,28,28,0.08)";
-          ctx.lineWidth = 1;
-          for (let r = 0; r < displayRows; r++) {
-            const y = PAGE_TOP + r * LINE_H + 14;
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(worldWidth, y);
-            ctx.stroke();
-          }
-
-          ctx.textBaseline = "alphabetic";
-          const allLines = allLinesForSize;
-          for (let r = 0; r < allLines.length; r++) {
-            const line = allLines[r] || "";
-            const y = rowY(r);
-            const isTitleRow = r === 0 && hasTitle;
-            for (let i = 0; i < line.length; i++) {
-              const ch = line[i];
-              if (ch === " ") continue;
-              const x = COL_LEFT_START + i * CHAR_W;
-              ctx.fillStyle = "#1c1c1c";
-              // mismo font-weight/tamaño que usa index.html para el título vs. texto normal
-              ctx.font = isTitleRow
-                ? `900 ${FONT_SIZE + 2}px 'Special Elite', monospace`
-                : `${FONT_SIZE}px 'Special Elite', monospace`;
-              ctx.fillText(ch, x - 2, y + FONT_SIZE - 4);
-              // plataforma: mismo ancho/alto/offset que PLATFORM_W/PLATFORM_H reales
-              ctx.fillStyle = "rgba(28,28,28,0.15)";
-              ctx.fillRect(
-                x + (CHAR_W - PLATFORM_W) / 2,
-                y + FONT_SIZE - 2,
-                PLATFORM_W,
-                PLATFORM_H / 2,
-              );
-            }
-            if (navRow !== null && r === navRow + 2) {
-              const arrowX = COL_LEFT_START + (navCol || 0) * CHAR_W;
-              ctx.fillStyle = "#b3261e";
-              ctx.font = `${FONT_SIZE}px sans-serif`;
-              ctx.fillText("▶", arrowX + 2, y + FONT_SIZE - 4);
-            }
-          }
-
-          // punto de aparición: la estrella si hay marcador explícito, o
-          // el default (renglón 0, borde izquierdo) si no lo hay — mismo
-          // criterio que usa index.html (rowY(0) - 20)
-          const spawnR = spawnRow !== null ? spawnRow + 2 : 0;
-          const spawnC = spawnRow !== null ? spawnCol || 0 : 0;
-          const spawnX = COL_LEFT_START + spawnC * CHAR_W;
-          const spawnY = rowY(spawnR) - 20;
-          ctx.fillStyle = "#a9812f";
-          ctx.font = `${FONT_SIZE}px sans-serif`;
-          ctx.fillText("★", spawnX - 2, spawnY + FONT_SIZE - 4);
+        function buildPreviewPayload() {
+          const n = Number(levelNumInput.value) || 1;
+          const isFinal = isFinalInput.checked;
+          return {
+            lines: linesWithMarkers(),
+            title: levelTitleInput.value.trim(),
+            growsUp: growsUpInput.checked,
+            // el nivel 1 (no final) siempre se llama "Casus liber" en el
+            // juego real, sin importar el título tipeado acá — se simula
+            // ese mismo comportamiento
+            isLevelOne: !isFinal && n === 1,
+          };
         }
 
-        // ---------- exportar ----------
-        function buildFileContent() {
-          const lines = getLines();
-          const isFinal = isFinalInput.checked;
-          const n = Number(levelNumInput.value) || 1;
-          const idxExpr = isFinal ? "window.LEVEL_COUNT" : String(n - 1);
-          const title = levelTitleInput.value.trim();
+        function openSimulation() {
+          const payload = buildPreviewPayload();
+          let encoded;
+          try {
+            encoded = encodeURIComponent(JSON.stringify(payload));
+          } catch (err) {
+            alert("No se pudo preparar la simulación: " + err.message);
+            return;
+          }
+          // sessionStorage como respaldo (funciona bien si esto se sirve
+          // por http/https); pero el dato real viaja en el hash de la URL,
+          // que funciona SIEMPRE, incluso abriendo el archivo directo con
+          // doble click (file://), donde el iframe puede quedar en un
+          // origen aislado y no compartir sessionStorage con esta pestaña.
+          try {
+            sessionStorage.setItem("cl_preview_level", JSON.stringify(payload));
+          } catch (err) {}
+          simOverlay.classList.remove("hidden");
+          simFrame.src =
+            "index.html?preview=1&t=" + Date.now() + "#lvl=" + encoded;
+          if (simOverlay.requestFullscreen) {
+            simOverlay.requestFullscreen().catch(() => {});
+          } else if (simOverlay.webkitRequestFullscreen) {
+            simOverlay.webkitRequestFullscreen();
+          }
+        }
 
-          const exportLines = lines.map((line, r) => {
+        function reloadSimulation() {
+          const payload = buildPreviewPayload();
+          let encoded;
+          try {
+            encoded = encodeURIComponent(JSON.stringify(payload));
+          } catch (err) {
+            alert("No se pudo actualizar la simulación: " + err.message);
+            return;
+          }
+          try {
+            sessionStorage.setItem("cl_preview_level", JSON.stringify(payload));
+          } catch (err) {}
+          simFrame.src =
+            "index.html?preview=1&t=" + Date.now() + "#lvl=" + encoded;
+        }
+
+        function closeSimulation() {
+          simOverlay.classList.add("hidden");
+          simFrame.src = "about:blank";
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+          } else if (document.webkitFullscreenElement) {
+            document.webkitExitFullscreen();
+          }
+        }
+
+        simulateBtn.addEventListener("click", openSimulation);
+        simReloadBtn.addEventListener("click", reloadSimulation);
+        simCloseBtn.addEventListener("click", closeSimulation);
+
+        // si el usuario sale de pantalla completa con Esc (el navegador la
+        // cierra solo), el overlay tiene que cerrarse con ella en vez de
+        // quedar tapando la pantalla sin estar realmente en fullscreen
+        document.addEventListener("fullscreenchange", () => {
+          if (
+            !document.fullscreenElement &&
+            !simOverlay.classList.contains("hidden")
+          ) {
+            simOverlay.classList.add("hidden");
+            simFrame.src = "about:blank";
+          }
+        });
+
+        // Esc también cierra la simulación aunque no se haya podido entrar
+        // a fullscreen de verdad (por ejemplo, si el navegador lo bloqueó)
+        window.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && !simOverlay.classList.contains("hidden")) {
+            closeSimulation();
+          }
+        });
+
+        // ---------- exportar ----------
+        // Inserta los marcadores (*)/(^)/(<) en las líneas reales de la
+        // pista, exactamente en el formato que espera el motor del juego
+        // (index.html). La usan tanto la descarga del .js como la
+        // simulación en pantalla completa, para que las dos vean siempre
+        // lo mismo.
+        function linesWithMarkers() {
+          const lines = getLines();
+          return lines.map((line, r) => {
             // si los dos marcadores caen en el mismo renglón, se inserta
             // primero el que tenga la columna más grande: así el índice
             // del segundo (más chico) no se corre por la inserción del
@@ -799,12 +1290,22 @@
               inserts.push({ col: navCol, marker: "(*)" });
             if (spawnRow === r && spawnCol !== null)
               inserts.push({ col: spawnCol, marker: "(^)" });
+            if (prevRow === r && prevCol !== null)
+              inserts.push({ col: prevCol, marker: "(<)" });
             inserts.sort((a, b) => b.col - a.col);
             let result = line;
             for (const ins of inserts)
               result = insertMarker(result, ins.col, ins.marker);
             return result;
           });
+        }
+
+        function buildFileContent() {
+          const isFinal = isFinalInput.checked;
+          const n = Number(levelNumInput.value) || 1;
+          const idxExpr = isFinal ? "window.LEVEL_COUNT" : String(n - 1);
+          const title = levelTitleInput.value.trim();
+          const exportLines = linesWithMarkers();
 
           let out = `// Nivel generado con el Creador de niveles de Casus Liber\n`;
           out += `window.LEVELS[${idxExpr}] = [\n`;
@@ -836,6 +1337,84 @@
         });
 
         // ---------- cargar nivel existente ----------
+        // Ejecuta el .js cargado dentro de un <iframe sandbox="allow-scripts">
+        // SIN "allow-same-origin": eso le da un origen opaco propio, así que
+        // el código del archivo no puede tocar el documento real de esta
+        // página, sus cookies/sessionStorage, ni navegar la pestaña — queda
+        // aislado de verdad (a diferencia de un simple `new Function`, que
+        // corre en el mismo contexto global y sí podría acceder a todo eso).
+        // Se comunica con este script vía postMessage.
+        function runLevelFileSandboxed(code, initialCount) {
+          return new Promise((resolve, reject) => {
+            const iframe = document.createElement("iframe");
+            iframe.setAttribute("sandbox", "allow-scripts");
+            iframe.style.display = "none";
+            const reqId = Math.random().toString(36).slice(2);
+
+            let settled = false;
+            const cleanup = () => {
+              window.removeEventListener("message", onMessage);
+              clearTimeout(timeout);
+              iframe.remove();
+            };
+
+            function onMessage(ev) {
+              const data = ev.data;
+              if (!data || data.reqId !== reqId || settled) return;
+              settled = true;
+              cleanup();
+              if (data.error) reject(new Error(data.error));
+              else resolve(data.result);
+            }
+            window.addEventListener("message", onMessage);
+
+            // watchdog: si el iframe nunca contesta (por ejemplo, si el
+            // navegador bloquea el sandbox), no dejamos la promesa colgada
+            const timeout = setTimeout(() => {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              reject(new Error("tiempo de espera agotado al leer el archivo"));
+            }, 5000);
+
+            iframe.srcdoc = `<!doctype html><html><body><script>
+              window.addEventListener("message", function (e) {
+                var data = e.data;
+                if (!data || data.type !== "run") return;
+                var result, error;
+                try {
+                  var sandboxWindow = {
+                    LEVELS: [],
+                    LEVEL_TITLES: [],
+                    LEVEL_GROWS_UP: [],
+                    LEVEL_COUNT: data.initialCount,
+                  };
+                  var fn = new Function("window", data.code + "\\n;return window;");
+                  var out = fn(sandboxWindow);
+                  result = {
+                    LEVELS: out.LEVELS || [],
+                    LEVEL_TITLES: out.LEVEL_TITLES || [],
+                    LEVEL_GROWS_UP: out.LEVEL_GROWS_UP || [],
+                    LEVEL_COUNT: out.LEVEL_COUNT,
+                  };
+                } catch (err) {
+                  error = String((err && err.message) || err);
+                }
+                parent.postMessage({ reqId: data.reqId, result: result, error: error }, "*");
+              });
+            <\/script></body></html>`;
+
+            iframe.addEventListener("load", () => {
+              iframe.contentWindow.postMessage(
+                { type: "run", code, initialCount, reqId },
+                "*",
+              );
+            });
+
+            document.body.appendChild(iframe);
+          });
+        }
+
         document
           .getElementById("fileInput")
           .addEventListener("change", async (e) => {
@@ -846,19 +1425,15 @@
               const mNum = file.name.match(/nivel(\d+)\.js/i);
               const mFinal = /nivelfinal\.js/i.test(file.name);
 
-              const sandbox = {
-                LEVELS: [],
-                LEVEL_TITLES: [],
-                LEVEL_GROWS_UP: [],
-                LEVEL_COUNT: Number(levelNumInput.value) || 10,
-              };
-              const runner = new Function("window", text + "\n;return window;");
-              const result = runner(sandbox);
+              const result = await runLevelFileSandboxed(
+                text,
+                Number(levelNumInput.value) || 10,
+              );
 
               let idx;
               if (mFinal) {
                 isFinalInput.checked = true;
-                idx = sandbox.LEVEL_COUNT;
+                idx = result.LEVEL_COUNT;
               } else if (mNum) {
                 isFinalInput.checked = false;
                 levelNumInput.value = mNum[1];
@@ -867,6 +1442,17 @@
                 idx = Number(levelNumInput.value) - 1;
               }
 
+              const foundLevel = !!(
+                result.LEVELS && result.LEVELS[idx] !== undefined
+              );
+              if (!foundLevel) {
+                alert(
+                  `Ojo: ese archivo no tiene un nivel en la posición esperada ` +
+                    `(índice ${idx}). Se abrió una pista vacía; si el número de ` +
+                    `nivel o el checkbox "Es el nivel final" no coinciden con el ` +
+                    `contenido real del archivo, ajustalos y volvé a cargarlo.`,
+                );
+              }
               const rawLines = (result.LEVELS && result.LEVELS[idx]) || [];
               const title =
                 (result.LEVEL_TITLES && result.LEVEL_TITLES[idx]) || "";
@@ -879,6 +1465,8 @@
               navCol = null;
               spawnRow = null;
               spawnCol = null;
+              prevRow = null;
+              prevCol = null;
               const cleanLines = rawLines.map((l, i) => {
                 let s = String(l);
                 const markerAt = s.indexOf("(*)");
@@ -892,6 +1480,12 @@
                   spawnRow = i;
                   spawnCol = spawnAt;
                   s = s.replace(/\(\^\)/g, "");
+                }
+                const prevAt = s.indexOf("(<)");
+                if (prevAt !== -1) {
+                  prevRow = i;
+                  prevCol = prevAt;
+                  s = s.replace(/\(<\)/g, "");
                 }
                 return s;
               });
@@ -933,6 +1527,7 @@
           });
         }
         syncGrid();
+        renderPreview();
       })();
     </script>
   </body>

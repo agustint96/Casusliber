@@ -137,6 +137,23 @@
         display: none !important;
       }
 
+      /* ---------- Aviso de "estás en modo simulación" (editor) ---------- */
+      .preview-banner {
+        position: fixed;
+        top: max(16px, env(safe-area-inset-top));
+        left: 14px;
+        z-index: 5;
+        font-family: "Special Elite", monospace;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: #fff;
+        background: var(--pen-red);
+        padding: 4px 9px;
+        opacity: 0.85;
+        pointer-events: none;
+      }
+
       /* ---------- Fundido a blanco al terminar el último nivel ---------- */
       .fade-overlay {
         position: fixed;
@@ -238,6 +255,237 @@
         line-height: 1.5;
         transition: opacity 0.6s ease;
       }
+      /* ================= MODO EDICIÓN (escribir un nivel adentro del juego) =================
+         Toda la interfaz del editor usa la misma paleta y la misma tipografía
+         que el juego (papel blanco, tinta, rojo de lapicera): la idea es que
+         editar se sienta como seguir jugando, no como abrir otro programa. */
+      .editor-banner {
+        position: fixed;
+        top: max(16px, env(safe-area-inset-top));
+        left: 14px;
+        z-index: 8;
+        font-family: "Special Elite", monospace;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: #fff;
+        background: var(--pen-red);
+        padding: 4px 9px;
+        opacity: 0.85;
+        pointer-events: none;
+      }
+      .editor-caretinfo {
+        position: fixed;
+        top: max(16px, env(safe-area-inset-top));
+        right: 14px;
+        z-index: 8;
+        font-family: "Special Elite", monospace;
+        font-size: 10px;
+        letter-spacing: 1px;
+        color: var(--ink-faint);
+        pointer-events: none;
+      }
+      .editor-flash {
+        position: fixed;
+        top: calc(max(16px, env(safe-area-inset-top)) + 26px);
+        left: 14px;
+        z-index: 8;
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+        color: var(--pen-red);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+      }
+      .editor-flash.show {
+        opacity: 0.9;
+      }
+      /* barra de herramientas: una tira de texto al pie, sin cajas ni iconos */
+      .editor-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 8;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 4px 14px;
+        padding: 9px 14px calc(9px + env(safe-area-inset-bottom));
+        background: rgba(255, 255, 255, 0.93);
+        border-top: 1px solid rgba(28, 28, 28, 0.14);
+        backdrop-filter: blur(2px);
+      }
+      .ed-btn {
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: var(--ink);
+        background: none;
+        border: none;
+        border-bottom: 1px solid transparent;
+        padding: 3px 2px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .ed-btn:hover {
+        color: var(--pen-red);
+        border-bottom-color: var(--pen-red);
+      }
+      .ed-btn.primary {
+        color: var(--pen-red);
+        font-weight: bold;
+      }
+      .ed-btn.on {
+        color: var(--pen-red);
+        border-bottom-color: var(--pen-red);
+      }
+      .ed-btn small {
+        font-size: 9px;
+        opacity: 0.5;
+        margin-left: 4px;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .editor-bar.testing .writeonly {
+        display: none;
+      }
+      .ed-sep {
+        width: 1px;
+        height: 14px;
+        background: rgba(28, 28, 28, 0.16);
+      }
+      .ed-field {
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        color: var(--ink);
+        letter-spacing: 0.5px;
+      }
+      .ed-field input {
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        color: var(--pen-red);
+        width: 34px;
+        text-align: center;
+        background: none;
+        border: none;
+        border-bottom: 1px solid rgba(28, 28, 28, 0.3);
+        padding: 2px 0;
+      }
+      .ed-field input:focus {
+        outline: none;
+        border-bottom-color: var(--pen-red);
+      }
+      /* panel de "abrir nivel": lista de los niveles que ya tiene el juego */
+      .editor-panel {
+        position: fixed;
+        inset: 0;
+        z-index: 9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(2px);
+      }
+      .editor-panel .sheet {
+        width: min(92vw, 420px);
+        max-height: 76vh;
+        overflow: auto;
+        background: var(--paper);
+        border: 1px solid rgba(28, 28, 28, 0.18);
+        padding: 20px 22px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.1);
+      }
+      .editor-panel h2 {
+        font-family: "Playfair Display", serif;
+        font-style: italic;
+        font-size: 20px;
+        margin: 0 0 4px;
+      }
+      .editor-panel p {
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        color: var(--ink-faint);
+        margin: 0 0 14px;
+        line-height: 1.5;
+      }
+      .editor-panel .levels {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+      .ed-chip {
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        color: var(--ink);
+        background: none;
+        border: 1px solid rgba(28, 28, 28, 0.22);
+        padding: 5px 9px;
+        cursor: pointer;
+      }
+      .ed-chip:hover {
+        border-color: var(--pen-red);
+        color: var(--pen-red);
+      }
+      .ed-label {
+        display: block;
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        color: var(--ink);
+        margin-bottom: 12px;
+      }
+      .ed-input {
+        display: block;
+        width: 100%;
+        margin-top: 5px;
+        font-family: "Special Elite", monospace;
+        font-size: 12px;
+        color: var(--ink);
+        background: none;
+        border: none;
+        border-bottom: 1px solid rgba(28, 28, 28, 0.3);
+        padding: 4px 0;
+        resize: vertical;
+      }
+      .ed-input:focus {
+        outline: none;
+        border-bottom-color: var(--pen-red);
+      }
+      .ed-status {
+        font-family: "Special Elite", monospace;
+        font-size: 11px;
+        color: var(--pen-red);
+        min-height: 15px;
+        margin: 0 0 10px !important;
+      }
+
+      /* caja de texto invisible: solo existe para que en celular/tablet
+         aparezca el teclado del sistema y se pueda escribir el nivel */
+      #editorTypeProxy {
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+      }
+      @media (max-width: 700px) {
+        .editor-bar {
+          gap: 3px 10px;
+          padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+        }
+        .ed-btn {
+          font-size: 10px;
+        }
+        .ed-btn small {
+          display: none;
+        }
+      }
+
       @media (max-width: 700px) {
         #game {
           inset: 2rem;
@@ -278,6 +526,9 @@
   <body>
     <canvas id="game"></canvas>
     <div class="fade-overlay" id="fadeOverlay"></div>
+    <div class="preview-banner hidden" id="previewBanner">
+      simulación · creador de niveles
+    </div>
 
     <div class="mobile-tip" id="mobileTip">
       Deslizá el dedo hacia los costados para moverte y hacia arriba para saltar
@@ -299,6 +550,120 @@
         </div>
       </div>
     </div>
+
+    <!-- ---------- Modo edición ----------
+         El editor no es otra página: es el mismo canvas, el mismo motor y
+         el mismo dibujo del juego, con el personaje apagado y un cursor de
+         escritura encima. Estos nodos son solo la barra de herramientas y
+         los avisos; todo lo que se ve del nivel se sigue dibujando con
+         draw(). -->
+    <div class="editor-banner hidden" id="editorBanner">modo edición</div>
+    <div class="editor-caretinfo hidden" id="editorCaretInfo"></div>
+    <div class="editor-flash" id="editorFlash"></div>
+
+    <div class="editor-bar hidden" id="editorBar">
+      <button class="ed-btn primary" id="edPlay">
+        ▶ probar<small>ctrl+enter</small>
+      </button>
+      <div class="ed-sep writeonly"></div>
+      <button class="ed-btn writeonly" id="edSpawn">
+        ● aparición<small>alt+p</small>
+      </button>
+      <button class="ed-btn writeonly" id="edPrev">
+        ← flecha anterior<small>alt+b</small>
+      </button>
+      <button class="ed-btn writeonly" id="edNext">
+        → flecha siguiente<small>alt+n</small>
+      </button>
+      <div class="ed-sep writeonly"></div>
+      <button class="ed-btn writeonly" id="edGrow">
+        ↑ crece hacia arriba<small>alt+u</small>
+      </button>
+      <div class="ed-sep writeonly"></div>
+      <span class="ed-field writeonly"
+        >nivel
+        <input
+          id="edNum"
+          type="text"
+          inputmode="numeric"
+          value="1"
+          autocomplete="off"
+      /></span>
+      <button class="ed-btn writeonly" id="edFinal">final</button>
+      <button class="ed-btn writeonly" id="edOpen">abrir<small>ctrl+o</small></button>
+      <button class="ed-btn writeonly" id="edSend">
+        ✉ enviar<small>ctrl+m</small>
+      </button>
+      <button class="ed-btn writeonly" id="edSave">
+        descargar .js<small>ctrl+s</small>
+      </button>
+      <div class="ed-sep writeonly"></div>
+      <button class="ed-btn" id="edQuit">salir<small>esc</small></button>
+    </div>
+
+    <div class="editor-panel hidden" id="editorPanel">
+      <div class="sheet">
+        <h2>Abrir un nivel</h2>
+        <p>
+          Elegí uno de los niveles que ya tiene el juego para seguir
+          editándolo, empezá uno en blanco, o abrí un archivo
+          <code>nivelN.js</code> que tengas guardado.
+        </p>
+        <div class="levels" id="edLevelList"></div>
+        <div class="levels">
+          <button class="ed-chip" id="edNewLevel">+ nivel en blanco</button>
+          <button class="ed-chip" id="edFromFile">abrir archivo .js…</button>
+          <button class="ed-chip" id="edPanelClose">cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="editor-panel hidden" id="editorSendPanel">
+      <div class="sheet">
+        <h2>Enviar el nivel</h2>
+        <p id="edSendIntro">
+          Se le manda por correo al autor del juego, con el archivo del nivel
+          adjunto. También podés descargarlo y guardarlo vos.
+        </p>
+        <label class="ed-label"
+          >Tu nombre
+          <input
+            class="ed-input"
+            id="edAuthor"
+            type="text"
+            maxlength="60"
+            autocomplete="off"
+        /></label>
+        <label class="ed-label"
+          >Mensaje (opcional)
+          <textarea class="ed-input" id="edNote" rows="3" maxlength="500">
+          </textarea
+        ></label>
+        <p class="ed-status" id="edSendStatus"></p>
+        <div class="levels">
+          <button class="ed-chip" id="edSendGo">enviar</button>
+          <button class="ed-chip" id="edSendDownload">
+            descargar en vez de enviar
+          </button>
+          <button class="ed-chip" id="edSendClose">cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <input
+      type="file"
+      id="editorFileInput"
+      accept=".js"
+      style="display: none"
+    />
+    <input
+      id="editorTypeProxy"
+      type="text"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    />
 
     <!-- ---------- Niveles: cargados desde archivos externos ----------
          Cada archivo niveles/nivelN.js llena window.LEVELS[N-1] con el
@@ -325,13 +690,64 @@
       // crece hacia arriba" en el editor. Sin esto (false/undefined), el
       // nivel se arma como siempre: el primer renglón arriba, bajando.
       window.LEVEL_GROWS_UP = [];
-      window.LEVEL_COUNT = 17; // <- cambiá este número al agregar/quitar niveles numerados
-      for (let n = 1; n <= window.LEVEL_COUNT; n++) {
-        document.write('<script src="niveles/nivel' + n + '.js"><\/script>');
+      window.LEVEL_COUNT = 18; // <- cambiá este número al agregar/quitar niveles numerados
+
+      // ---------- Modo simulación (usado por el Creador de niveles) ----------
+      // Cuando index.html se abre como "index.html?preview=1", en vez de
+      // cargar los archivos niveles/nivelN.js reales, arranca con UN solo
+      // nivel: el que el editor dejó guardado en sessionStorage justo
+      // antes de abrir esta pestaña/iframe. Así "jugar en pantalla
+      // completa" desde el editor corre el motor real del juego, no una
+      // aproximación dibujada aparte.
+      window.PREVIEW_MODE =
+        new URLSearchParams(location.search).get("preview") === "1";
+      window.PREVIEW_IS_LEVEL_ONE = false;
+
+      // ---------- Modo edición ----------
+      // "index.html?editor=1" arranca directamente escribiendo un nivel en
+      // blanco, sin pasar por el juego. Estando jugando también se entra
+      // con la tecla E (ver EDITOR_HOTKEY más abajo, en el script grande).
+      window.EDITOR_START =
+        new URLSearchParams(location.search).get("editor") === "1";
+
+      if (window.PREVIEW_MODE) {
+        let data = null;
+        // 1) el dato viaja primero en el hash de la URL: esto funciona
+        // siempre, incluso abriendo los archivos con doble click
+        // (file://), donde el iframe puede quedar en un origen aislado y
+        // no compartir sessionStorage con la pestaña del editor.
+        try {
+          const hash = location.hash || "";
+          const m = hash.match(/(?:^#|&)lvl=([^&]+)/);
+          if (m) data = JSON.parse(decodeURIComponent(m[1]));
+        } catch (e) {}
+        // 2) respaldo: sessionStorage (por si el hash no estuviera, por
+        // ejemplo abriendo esta URL a mano)
+        if (!data) {
+          try {
+            const raw = sessionStorage.getItem("cl_preview_level");
+            data = raw ? JSON.parse(raw) : null;
+          } catch (e) {}
+        }
+        if (data) {
+          window.LEVELS = [data.lines || []];
+          window.LEVEL_TITLES = [data.title || ""];
+          window.LEVEL_GROWS_UP = [!!data.growsUp];
+          window.PREVIEW_IS_LEVEL_ONE = !!data.isLevelOne;
+        }
+        window.LEVEL_COUNT = window.LEVELS.length;
+        // -1 = ningún nivel es "el final": tocar la flecha derecha nunca
+        // funde a blanco, simplemente vuelve a este mismo nivel (útil para
+        // probarlo en bucle mientras se lo está armando).
+        window.FINAL_LEVEL_INDEX = -1;
+      } else {
+        for (let n = 1; n <= window.LEVEL_COUNT; n++) {
+          document.write('<script src="niveles/nivel' + n + '.js"><\/script>');
+        }
+        // Nivel final: fijo, siempre el último. Se carga después de los
+        // niveles numerados de arriba y ocupa el índice window.LEVEL_COUNT.
+        document.write('<script src="niveles/nivelfinal.js"><\/script>');
       }
-      // Nivel final: fijo, siempre el último. Se carga después de los
-      // niveles numerados de arriba y ocupa el índice window.LEVEL_COUNT.
-      document.write('<script src="niveles/nivelfinal.js"><\/script>');
     </script>
 
     <script>
@@ -487,9 +903,59 @@
         // vuelve a empezar desde el nivel 1 (en vez de repetir el
         // último para siempre)
         function getLevelIndex(pageIdx) {
+          // índice reservado del nivel que se está escribiendo en el editor:
+          // no entra en el bucle de niveles del juego, se sirve aparte
+          if (pageIdx === EDITOR_PAGE) return EDITOR_PAGE;
           return LEVELS.length > 0
             ? (((pageIdx || 0) % LEVELS.length) + LEVELS.length) % LEVELS.length
             : 0;
+        }
+
+        // ---------- De dónde salen los renglones de un nivel ----------
+        // Normalmente, de los archivos niveles/nivelN.js (window.LEVELS). Si
+        // el índice es EDITOR_PAGE, salen del nivel que se está escribiendo
+        // ahora mismo en el editor. Todo lo demás del motor (plataformas,
+        // marcas "(*)" "(^)" "(<)", crecer hacia arriba, cámara, física) no
+        // se entera de la diferencia y funciona igual en los dos casos: por
+        // eso el editor se ve exactamente como el juego.
+        const EDITOR_PAGE = -1;
+        let editorSource = null; // { lines, title, growsUp } mientras se edita
+
+        // Estado del nivel que se está escribiendo. Ojo con el mapa de filas:
+        // el motor arma cada nivel como [título, renglón en blanco, ...líneas],
+        // así que la fila 0 del mundo es el título, la fila 1 es el blanco fijo
+        // que va abajo del título (no se puede escribir ahí) y las filas 2 en
+        // adelante son editor.lines[fila - 2].
+        //
+        // Las tres marcas NO se guardan metidas en el texto: viven acá aparte,
+        // en {fila, columna}, y recién se escriben como "(^)" "(<)" "(*)" al
+        // armar la página o al exportar el archivo. Así escribir una letra al
+        // principio del renglón no te deja tres caracteres invisibles en el
+        // medio ni te corre la flecha de lugar.
+        const editor = {
+          active: false, // el editor está abierto
+          playing: false, // dentro del editor, probando el nivel
+          lines: [""],
+          title: "",
+          growsUp: false,
+          row: 2,
+          col: 0,
+          markers: { spawn: null, prev: null, next: null },
+          levelNumber: 1,
+          isFinal: false,
+        };
+
+        // ¿Estamos escribiendo (no jugando)? Es la pregunta que hacen la
+        // cámara, la física y el dibujo para saber si hay personaje o no.
+        function isWritingLevel() {
+          return editor.active && !editor.playing;
+        }
+
+        function getLevelLines(levelIdx) {
+          if (levelIdx === EDITOR_PAGE) {
+            return editorSource ? editorSource.lines : [];
+          }
+          return LEVELS[levelIdx] || [];
         }
 
         // Título de un nivel: el nivel 1 (índice 0) siempre es "Casus
@@ -497,6 +963,14 @@
         // elegido el creador en el editor (window.LEVEL_TITLES), o "" si no
         // eligió ninguno (en ese caso esa fila queda vacía / sin título).
         function getLevelTitle(levelIdx) {
+          if (levelIdx === EDITOR_PAGE) {
+            return editorSource ? editorSource.title : "";
+          }
+          if (window.PREVIEW_MODE) {
+            if (window.PREVIEW_IS_LEVEL_ONE) return "Casus liber";
+            const titles = window.LEVEL_TITLES || [];
+            return titles[0] || "";
+          }
           if (levelIdx === 0) return "Casus liber";
           const titles = window.LEVEL_TITLES || [];
           return titles[levelIdx] || "";
@@ -504,18 +978,31 @@
 
         function wrapColumnLines(pageIdx) {
           const levelIdx = getLevelIndex(pageIdx);
-          const blocks = LEVELS[levelIdx] || [];
+          const blocks = getLevelLines(levelIdx);
           // Ya no hay tope de renglones: el nivel mide exactamente lo que
           // mida su array (título + blanco + todos sus renglones, sean 5 o
           // 500). Tampoco se recorta cada renglón a un ancho fijo: se usa
           // tal cual está escrito.
-          const lines = [getLevelTitle(levelIdx), ""];
+          // El título también puede llevar marcas "(*)"/"(^)"/"(<)" (por
+          // ejemplo, la flecha "anterior" pegada antes del título): se
+          // despojan igual que en cualquier otro renglón, para que nunca
+          // queden como texto/plataforma visible.
+          const titleClean = (getLevelTitle(levelIdx) || "")
+            .replace(/\(\*\)/g, "")
+            .replace(/\(\^\)/g, "")
+            .replace(/\(<\)/g, "");
+          const lines = [titleClean, ""];
           for (let i = 0; i < blocks.length; i++) {
             const raw = blocks[i] || "";
-            // "(*)" (flecha de "siguiente") y "(^)" (aparición del
-            // personaje) son solo marcas, nunca una plataforma real: se
-            // sacan del texto
-            lines.push(raw.replace(/\(\*\)/g, "").replace(/\(\^\)/g, ""));
+            // "(*)" (flecha de "siguiente"), "(^)" (aparición del
+            // personaje) y "(<)" (flecha "anterior") son solo marcas,
+            // nunca una plataforma real: se sacan del texto
+            lines.push(
+              raw
+                .replace(/\(\*\)/g, "")
+                .replace(/\(\^\)/g, "")
+                .replace(/\(<\)/g, ""),
+            );
           }
           return lines;
         }
@@ -529,7 +1016,12 @@
         // donde tiene que quedar pegada la flecha, justo a la derecha del
         // carácter anterior. Devuelve null si el nivel no tiene marcador.
         function getNavMarkerPos(levelIdx) {
-          const blocks = LEVELS[levelIdx] || [];
+          // El título (renglón 0) también puede llevar la marca: se
+          // revisa primero, y si no está ahí se busca en el contenido
+          // como siempre.
+          const titleIdx = (getLevelTitle(levelIdx) || "").indexOf("(*)");
+          if (titleIdx !== -1) return { row: 0, col: titleIdx };
+          const blocks = getLevelLines(levelIdx);
           for (let i = 0; i < blocks.length; i++) {
             const raw = blocks[i] || "";
             const idx = raw.indexOf("(*)");
@@ -543,10 +1035,27 @@
         // devuelve null y se usa el default (primer renglón, borde
         // izquierdo).
         function getSpawnMarkerPos(levelIdx) {
-          const blocks = LEVELS[levelIdx] || [];
+          const titleIdx = (getLevelTitle(levelIdx) || "").indexOf("(^)");
+          if (titleIdx !== -1) return { row: 0, col: titleIdx };
+          const blocks = getLevelLines(levelIdx);
           for (let i = 0; i < blocks.length; i++) {
             const raw = blocks[i] || "";
             const idx = raw.indexOf("(^)");
+            if (idx !== -1) return { row: i + 2, col: idx };
+          }
+          return null;
+        }
+
+        // Igual que getNavMarkerPos, pero para "(<)": el marcador que dice
+        // dónde va la flecha "anterior". Si no está, devuelve null y se usa
+        // el default (misma fila/columna que la aparición del personaje).
+        function getPrevMarkerPos(levelIdx) {
+          const titleIdx = (getLevelTitle(levelIdx) || "").indexOf("(<)");
+          if (titleIdx !== -1) return { row: 0, col: titleIdx };
+          const blocks = getLevelLines(levelIdx);
+          for (let i = 0; i < blocks.length; i++) {
+            const raw = blocks[i] || "";
+            const idx = raw.indexOf("(<)");
             if (idx !== -1) return { row: i + 2, col: idx };
           }
           return null;
@@ -556,8 +1065,20 @@
         // ABAJO de la pantalla y los siguientes se apilan hacia arriba, en
         // vez de bajar como es lo normal)
         function levelGrowsUp(levelIdx) {
+          if (levelIdx === EDITOR_PAGE) {
+            return !!(editorSource && editorSource.growsUp);
+          }
           const flags = window.LEVEL_GROWS_UP || [];
           return !!flags[levelIdx];
+        }
+
+        // Y en qué pantalla cae el renglón "r" de una página ya construida.
+        // Es la misma cuenta que rowY() adentro de buildPage(), pero visible
+        // desde afuera: el editor la necesita para saber dónde dibujar el
+        // cursor y para traducir un clic del mouse a fila del nivel.
+        function pageRowY(pg, r) {
+          const rr = pg.growsUp ? pg.linesPerCol - 1 - r : r;
+          return PAGE_TOP + rr * LINE_H;
         }
 
         // ---------- Generación de una página (nivel) ----------
@@ -674,17 +1195,27 @@
           const startX = COL_LEFT_START + spawnColIndex * CHAR_W;
           const startY = rowY(spawnRowIndex) - 20;
 
-          // La flecha IZQUIERDA (capítulo anterior) va SIEMPRE pegada,
-          // a la izquierda, de donde aparece el personaje: misma fila y
-          // misma columna que el spawn (con o sin marcador "(^)"), sin
-          // importar el contenido del nivel. Se puede forzar otra fila
-          // con NAV_ROW_INDEX si hiciera falta.
+          // La flecha IZQUIERDA (capítulo anterior): si el nivel tiene un
+          // marcador "(<)" en el editor, va en ESA fila/columna exacta —
+          // la que eligió libremente quien armó el nivel. Si no hay
+          // marcador, sigue el comportamiento de siempre: pegada a la
+          // izquierda de donde aparece el personaje (misma fila/columna
+          // que el spawn). NAV_ROW_INDEX sigue disponible como último
+          // recurso para forzar otra fila desde acá.
           const midRowIndex = Math.round((linesPerCol - 1) / 2);
-          const navRowIndex =
-            NAV_ROW_INDEX !== null ? NAV_ROW_INDEX : spawnRowIndex;
+          const prevMarkerPos = getPrevMarkerPos(getLevelIndex(pageIdx));
+          let navRowIndex, navRowFirstCharStartX;
+          if (prevMarkerPos !== null) {
+            navRowIndex = prevMarkerPos.row;
+            navRowFirstCharStartX = COL_LEFT_START + prevMarkerPos.col * CHAR_W;
+          } else if (NAV_ROW_INDEX !== null) {
+            navRowIndex = NAV_ROW_INDEX;
+            navRowFirstCharStartX = COL_LEFT_START;
+          } else {
+            navRowIndex = spawnRowIndex;
+            navRowFirstCharStartX = startX;
+          }
           const navRowY = rowY(navRowIndex);
-          const navRowFirstCharStartX =
-            NAV_ROW_INDEX !== null ? COL_LEFT_START : startX;
 
           // La flecha DERECHA (siguiente): si el nivel tiene un marcador
           // "(*)" en el editor, va en ESA fila, pegada JUSTO A LA DERECHA
@@ -772,6 +1303,11 @@
         // efecto de "derretido" (mancha que se hunde tras la inactividad)
         let idleFrames = 0;
         const idleAnchor = { x: player.x, y: player.y };
+        // "derretido" por inactividad: recién arranca después de un rato
+        // quieto, y crece muy gradualmente — la mancha se hunde y se
+        // ensancha por abajo, como tinta real asentándose en el papel
+        const IDLE_MELT_THRESHOLD = 90; // ~1.5s a 60fps antes de empezar
+        const MELT_RAMP_FRAMES = 260; // ~4.3s hasta el derretido máximo
 
         const GRAVITY = 0.3;
         const MOVE_SPEED = 3.0;
@@ -780,6 +1316,9 @@
 
         const keys = {};
         window.addEventListener("keydown", (e) => {
+          // el editor se queda con el teclado mientras está abierto: ahí las
+          // flechas mueven el cursor de escritura, no al personaje
+          if (editorHandleKeyDown(e)) return;
           if (["ArrowLeft", "ArrowRight", "ArrowUp", " "].includes(e.key))
             e.preventDefault();
           keys[e.key] = true;
@@ -809,6 +1348,14 @@
         let dragTouchId = null; // qué dedo controla el movimiento horizontal ahora mismo
 
         function onTouchStart(e) {
+          // escribiendo el nivel, tocar la pantalla lleva el cursor de
+          // escritura a ese punto (y abre el teclado del celular)
+          if (isWritingLevel()) {
+            const t = e.changedTouches[0];
+            if (t) editorPointToCaret(t.clientX, t.clientY);
+            editorFocusProxy();
+            return;
+          }
           for (const t of e.changedTouches) {
             touchStartY.set(t.identifier, t.clientY);
             touchStartX.set(t.identifier, t.clientX);
@@ -817,6 +1364,7 @@
           }
         }
         function onTouchMove(e) {
+          if (isWritingLevel()) return;
           for (const t of e.changedTouches) {
             // salto: deslizar hacia arriba
             if (!touchJumpedAlready.get(t.identifier)) {
@@ -837,6 +1385,7 @@
           }
         }
         function onTouchEnd(e) {
+          if (isWritingLevel()) return;
           for (const t of e.changedTouches) {
             touchStartY.delete(t.identifier);
             touchStartX.delete(t.identifier);
@@ -939,7 +1488,13 @@
           }
           const minCamX = -margin;
           const maxCamX = Math.max(minCamX, page.worldWidth + margin - viewW);
-          const raw = player.x + player.w / 2 - viewW / 2;
+          // escribiendo un nivel no hay personaje todavía: la cámara sigue al
+          // cursor de escritura, con la misma regla (si el nivel entra
+          // entero en pantalla, se centra en vez de perseguir a nadie)
+          const focusX = isWritingLevel()
+            ? caretWorldX() + CHAR_W / 2
+            : player.x + player.w / 2;
+          const raw = focusX - viewW / 2;
           return Math.min(Math.max(raw, minCamX), maxCamX);
         }
 
@@ -1011,6 +1566,13 @@
         const NAV_KNOCKBACK_VY = -4.5;
 
         function update() {
+          // escribiendo el nivel no hay personaje ni gravedad: lo único que
+          // se mueve es la cámara siguiendo al cursor de escritura
+          if (isWritingLevel()) {
+            camX += (getTargetCamX() - camX) * 0.2;
+            camY += (caretWorldY() + LINE_H / 2 - viewH / 2 - camY) * 0.2;
+            return;
+          }
           // seguimos corriendo la física (gravedad, movimiento, colisiones)
           // incluso durante "transitioning": lo único que se bloquea más abajo
           // es que se vuelva a disparar el cambio de página o la muerte otra vez.
@@ -1157,6 +1719,15 @@
               // arriba, como un choque real, en vez de quedar clavado
               player.vx = -NAV_KNOCKBACK_VX;
               player.vy = NAV_KNOCKBACK_VY;
+              // probando el nivel adentro del editor no hay "capítulo
+              // siguiente" al que ir: la flecha marca que el nivel se
+              // terminó y la prueba vuelve a empezar desde la aparición
+              if (editor.active) {
+                setTimeout(() => {
+                  editorRestartTest("llegaste a la flecha de salida");
+                }, 1000);
+                return;
+              }
               const isFinalLevel =
                 getLevelIndex(pageIndex) ===
                 (window.FINAL_LEVEL_INDEX ?? LEVELS.length - 1);
@@ -1170,7 +1741,10 @@
                   transitioning = false;
                 }
               }, 1000);
-            } else if (aabbOverlap(playerScreen, boxes.left) && pageIndex > 0) {
+            } else if (
+              aabbOverlap(playerScreen, boxes.left) &&
+              (pageIndex > 0 || editor.active)
+            ) {
               transitioning = true;
               playNextNavNote();
               navHitLeft = HIT_ANIM_FRAMES;
@@ -1178,6 +1752,12 @@
               // idem, pero empuja para el otro lado (derecha)
               player.vx = NAV_KNOCKBACK_VX;
               player.vy = NAV_KNOCKBACK_VY;
+              if (editor.active) {
+                setTimeout(() => {
+                  editorRestartTest("llegaste a la flecha de vuelta");
+                }, 1000);
+                return;
+              }
               setTimeout(() => {
                 goToPage(pageIndex - 1, "capítulo anterior...");
                 transitioning = false;
@@ -1283,26 +1863,72 @@
             ctx.fill();
           }
 
-          // jugador (mancha de tinta): un blob orgánico cuyo contorno muta
-          // levemente en el tiempo, en vez de un círculo perfecto y estático
+          // jugador (mancha de tinta) y, en el editor, la marca fantasma de
+          // dónde va a aparecer. Los dos usan el mismo dibujo (drawInkBlob):
+          // así, mientras se escribe el nivel, el punto de aparición no es
+          // un icono cualquiera sino el personaje mismo, apenas insinuado.
+          if (isWritingLevel()) {
+            drawInkBlob(
+              page.startX + player.w / 2,
+              page.startY + player.h / 2,
+              { alpha: 0.3 },
+            );
+          } else {
+            const meltNow = Math.max(
+              0,
+              Math.min(1, (idleFrames - IDLE_MELT_THRESHOLD) / MELT_RAMP_FRAMES),
+            );
+            drawInkBlob(
+              player.x + player.w / 2,
+              player.y + player.h / 2,
+              {
+                melt: meltNow,
+                facing: player.facing,
+                speed: Math.min(Math.hypot(player.vx, player.vy) / 8, 1),
+              },
+            );
+          }
+
+          // cursor de escritura, renglón activo y demás ayudas del editor
+          if (isWritingLevel()) drawEditorOverlay();
+
+          ctx.restore();
+
+          // flechas de navegación: dibujadas exactamente sobre la caja de colisión real
+          const boxes = getNavBoxes();
+          drawNavArrow(
+            boxes.left,
+            -1,
+            navHitLeft,
+            editor.active || pageIndex > 0,
+            navImpactLeft,
+          );
+          drawNavArrow(boxes.right, 1, navHitRight, true, navImpactRight);
+        }
+
+        // ---------- La mancha de tinta ----------
+        // Un blob orgánico cuyo contorno muta levemente en el tiempo, en vez
+        // de un círculo perfecto y estático. Se dibuja centrado en (cx, cy),
+        // en coordenadas de mundo. Lo usan el personaje y, en el editor, la
+        // marca fantasma del punto de aparición (misma forma, más tenue).
+        //   melt   0..1  "derretido" por inactividad
+        //   facing -1/1  hacia dónde mira (estira apenas la panza)
+        //   speed  0..1  qué tan rápido va (agita un poco el borde)
+        //   alpha  0..1  opacidad general
+        function drawInkBlob(cx, cy, opts) {
+          const melt = (opts && opts.melt) || 0;
+          const facing = opts && opts.facing !== undefined ? opts.facing : 1;
+          const inkSpeed = (opts && opts.speed) || 0;
+          const alpha = opts && opts.alpha !== undefined ? opts.alpha : 1;
+
           ctx.save();
-          ctx.translate(player.x + player.w / 2, player.y + player.h / 2);
+          ctx.translate(cx, cy);
+          ctx.globalAlpha = alpha;
 
           const inkT = performance.now() * 0.0007; // reloj de la mutación (lento)
-          const inkSpeed = Math.min(Math.hypot(player.vx, player.vy) / 8, 1);
           const inkBaseR = 5;
           const inkPts = 9;
-          const stretchX = player.facing >= 0 ? 1.04 : 0.96;
-
-          // "derretido" por inactividad: recién arranca después de un rato
-          // quieto, y crece muy gradualmente — la mancha se hunde y se
-          // ensancha por abajo, como tinta real asentándose en el papel
-          const idleThreshold = 90; // ~1.5s a 60fps antes de empezar
-          const meltRampFrames = 260; // ~4.3s hasta el derretido máximo
-          const melt = Math.max(
-            0,
-            Math.min(1, (idleFrames - idleThreshold) / meltRampFrames),
-          );
+          const stretchX = facing >= 0 ? 1.04 : 0.96;
 
           const blob = [];
           for (let i = 0; i < inkPts; i++) {
@@ -1360,27 +1986,13 @@
 
           // brillo húmedo muy tenue (blanco, no color) para dar sensación
           // de tinta fresca sin restarle sobriedad al dibujo
-          ctx.globalAlpha = 0.12;
+          ctx.globalAlpha = alpha * 0.12;
           ctx.fillStyle = "#ffffff";
           ctx.beginPath();
           ctx.ellipse(-1.4, -1.8, 1.3, 0.8, -0.4, 0, Math.PI * 2);
           ctx.fill();
-          ctx.globalAlpha = 1;
 
           ctx.restore();
-
-          ctx.restore();
-
-          // flechas de navegación: dibujadas exactamente sobre la caja de colisión real
-          const boxes = getNavBoxes();
-          drawNavArrow(
-            boxes.left,
-            -1,
-            navHitLeft,
-            pageIndex > 0,
-            navImpactLeft,
-          );
-          drawNavArrow(boxes.right, 1, navHitRight, true, navImpactRight);
         }
 
         // respuesta de un sistema críticamente amortiguado a un impulso instantáneo:
@@ -1464,13 +2076,1179 @@
           requestAnimationFrame(loop);
         }
 
+        /* ==================================================================
+           MODO EDICIÓN — escribir un nivel adentro del propio juego
+
+           No hay un "editor" aparte que imite al juego: es el mismo canvas,
+           el mismo buildPage(), el mismo dibujo y la misma cámara. Lo único
+           que cambia es que el personaje está apagado y en su lugar hay un
+           cursor de escritura. Por eso lo que ves mientras escribís es,
+           literalmente, cómo se va a ver el nivel.
+           ================================================================== */
+
+        // Tecla E para entrar al editor mientras se juega. Poné esto en false
+        // para publicar el juego sin la entrada al editor (igual queda
+        // disponible abriendo "index.html?editor=1").
+        const EDITOR_HOTKEY = true;
+
+        const editorBanner = document.getElementById("editorBanner");
+        const editorBar = document.getElementById("editorBar");
+        const editorCaretInfo = document.getElementById("editorCaretInfo");
+        const editorFlashEl = document.getElementById("editorFlash");
+        const editorPanel = document.getElementById("editorPanel");
+        const editorSendPanel = document.getElementById("editorSendPanel");
+        const editorFileInput = document.getElementById("editorFileInput");
+        const typeProxy = document.getElementById("editorTypeProxy");
+        const edNumInput = document.getElementById("edNum");
+
+        const MARKER_TAGS = { spawn: "(^)", prev: "(<)", next: "(*)" };
+        const MARKER_NAMES = {
+          spawn: "aparición del personaje",
+          prev: "flecha anterior",
+          next: "flecha siguiente",
+        };
+        const MAX_ROW = 400; // techo sano, para no fabricar mundos gigantes sin querer
+        const MAX_COL = 400;
+
+        // ---------- Filas: título / blanco / contenido ----------
+        function edGetRow(r) {
+          if (r === 0) return editor.title;
+          if (r === 1) return ""; // el blanco fijo entre el título y el nivel
+          return editor.lines[r - 2] || "";
+        }
+        function edSetRow(r, text) {
+          if (r === 0) {
+            editor.title = text;
+            return;
+          }
+          if (r === 1) return;
+          while (editor.lines.length < r - 1) editor.lines.push("");
+          editor.lines[r - 2] = text;
+        }
+        // el renglón 1 no existe para el cursor: se saltea
+        function edPrevRow(r) {
+          if (r <= 0) return null;
+          return r === 2 ? 0 : r - 1;
+        }
+        function edNextRow(r) {
+          return r === 0 ? 2 : r + 1;
+        }
+
+        // ---------- Marcas ----------
+        function edMarkerAt(r) {
+          const out = [];
+          for (const k of ["spawn", "prev", "next"]) {
+            const mk = editor.markers[k];
+            if (mk && mk.row === r) out.push({ k, col: mk.col });
+          }
+          return out;
+        }
+        // Corre las marcas de un renglón cuando se escribe o se borra texto a
+        // su izquierda, para que queden pegadas a lo que el autor escribió.
+        function edShiftMarkers(row, fromCol, delta) {
+          for (const k of ["spawn", "prev", "next"]) {
+            const mk = editor.markers[k];
+            if (mk && mk.row === row && mk.col >= fromCol) {
+              mk.col = Math.max(0, mk.col + delta);
+            }
+          }
+        }
+        function edShiftMarkerRows(fromRow, delta) {
+          for (const k of ["spawn", "prev", "next"]) {
+            const mk = editor.markers[k];
+            if (mk && mk.row >= fromRow) {
+              mk.row += delta;
+              if (mk.row < 2 && mk.row !== 0) editor.markers[k] = null;
+            }
+          }
+        }
+
+        // Devuelve el renglón TAL CUAL va al archivo: el texto del autor con
+        // las marcas insertadas en su columna. El motor lee cada marca con
+        // indexOf() sobre este texto, así que insertándolas de izquierda a
+        // derecha en la cadena que se va armando, el índice que encuentra el
+        // motor es exactamente la columna elegida acá.
+        function editorRawRow(r) {
+          const here = edMarkerAt(r);
+          let out = edGetRow(r);
+          if (!here.length) return out;
+          here.sort((a, b) => a.col - b.col);
+          let minAt = 0;
+          for (const m of here) {
+            let at = Math.max(m.col, minAt);
+            if (at > out.length) out = out.padEnd(at, " ");
+            out = out.slice(0, at) + MARKER_TAGS[m.k] + out.slice(at);
+            minAt = at + 3;
+          }
+          return out;
+        }
+
+        // Hasta qué fila llega el nivel (sin contar dónde esté el cursor)
+        function editorMaxRow() {
+          let m = 2 + editor.lines.length;
+          for (const k of ["spawn", "prev", "next"]) {
+            const mk = editor.markers[k];
+            if (mk) m = Math.max(m, mk.row + 1);
+          }
+          return m;
+        }
+
+        // Los renglones del nivel, listos para el motor o para el archivo.
+        // Con withCaret, el renglón donde está el cursor se rellena con
+        // espacios hasta esa columna: así el "papel" crece a medida que te
+        // movés y el cursor nunca queda fuera del mundo. Al exportar se
+        // llama sin cursor, y los renglones vacíos del final se recortan.
+        function editorRows(withCaret) {
+          const last = Math.max(
+            editorMaxRow(),
+            withCaret ? editor.row + 1 : 0,
+            3,
+          );
+          const rows = [];
+          for (let r = 2; r < last; r++) {
+            let raw = editorRawRow(r);
+            if (withCaret && r === editor.row && raw.length < editor.col + 1) {
+              raw = raw.padEnd(editor.col + 1, " ");
+            }
+            rows.push(raw);
+          }
+          const keep = withCaret ? Math.max(1, editor.row - 1) : 1;
+          while (rows.length > keep && rows[rows.length - 1].trim() === "") {
+            rows.pop();
+          }
+          return rows;
+        }
+
+        // Vuelve a armar la página con lo que hay escrito ahora. Es lo único
+        // que hace falta después de cualquier cambio: buildPage() se encarga
+        // del resto, igual que con un nivel real.
+        function editorSyncPage() {
+          let title = editorRawRow(0);
+          if (editor.row === 0 && title.length < editor.col + 1) {
+            title = title.padEnd(editor.col + 1, " ");
+          }
+          editorSource = {
+            lines: editorRows(true),
+            title,
+            growsUp: editor.growsUp,
+          };
+          page = buildPage(EDITOR_PAGE);
+          if (editorCaretInfo) {
+            editorCaretInfo.textContent =
+              (editor.row === 0 ? "título" : "renglón " + (editor.row - 1)) +
+              " · columna " +
+              (editor.col + 1);
+          }
+        }
+
+        // ---------- Dónde está el cursor, en coordenadas del mundo ----------
+        function caretWorldX() {
+          return COL_LEFT_START + editor.col * CHAR_W;
+        }
+        function caretWorldY() {
+          return pageRowY(page, editor.row);
+        }
+
+        function drawEditorOverlay() {
+          const y = caretWorldY();
+          const x = caretWorldX();
+
+          // banda tenue sobre el renglón que se está escribiendo
+          ctx.fillStyle = "rgba(179,38,30,0.045)";
+          ctx.fillRect(-2000, y - 6, page.worldWidth + 4000, LINE_H - 6);
+
+          // aclaración al margen de que el primer renglón es el título
+          if (editor.row === 0) {
+            ctx.save();
+            ctx.fillStyle = "rgba(28,28,28,0.35)";
+            ctx.font = "9px 'Special Elite', monospace";
+            ctx.textAlign = "right";
+            ctx.fillText("título", COL_LEFT_START - 12, y + FONT_SIZE - 5);
+            ctx.restore();
+          }
+
+          // cursor de escritura (parpadea como una lapicera apoyada)
+          if (performance.now() % 1100 < 700) {
+            ctx.fillStyle = "rgba(179,38,30,0.9)";
+            ctx.fillRect(x - 1, y - 3, 1.6, FONT_SIZE + 3);
+          }
+        }
+
+        // ---------- Escribir ----------
+        function editorInsertText(str) {
+          const text = String(str).replace(/[\r\n\t]/g, " ");
+          if (!text) return;
+          const r = editor.row;
+          let line = edGetRow(r);
+          if (editor.col > line.length) line = line.padEnd(editor.col, " ");
+          edSetRow(r, line.slice(0, editor.col) + text + line.slice(editor.col));
+          edShiftMarkers(r, editor.col, text.length);
+          editor.col = Math.min(MAX_COL, editor.col + text.length);
+          editorSyncPage();
+        }
+
+        function editorDeleteRow(r) {
+          if (r < 2) return;
+          const idx = r - 2;
+          if (idx >= editor.lines.length) return;
+          editor.lines.splice(idx, 1);
+          for (const k of ["spawn", "prev", "next"]) {
+            const mk = editor.markers[k];
+            if (!mk) continue;
+            if (mk.row === r) editor.markers[k] = null;
+            else if (mk.row > r) mk.row -= 1;
+          }
+        }
+
+        function editorBackspace() {
+          const r = editor.row;
+          const line = edGetRow(r);
+          if (editor.col > 0) {
+            const c = editor.col - 1;
+            if (c < line.length) {
+              edSetRow(r, line.slice(0, c) + line.slice(c + 1));
+              edShiftMarkers(r, c + 1, -1);
+            }
+            editor.col = c;
+          } else {
+            const prev = edPrevRow(r);
+            if (prev === null) return;
+            if (r >= 2 && prev >= 2) {
+              // como en cualquier editor de texto: el renglón se junta con
+              // el de arriba
+              editorDeleteRow(r);
+              editor.row = prev;
+              editor.col = edGetRow(prev).length;
+              if (line) edSetRow(prev, edGetRow(prev) + line);
+            } else {
+              editor.row = prev;
+              editor.col = edGetRow(prev).length;
+            }
+          }
+          editorSyncPage();
+        }
+
+        function editorDeleteForward() {
+          const r = editor.row;
+          const line = edGetRow(r);
+          if (editor.col < line.length) {
+            edSetRow(
+              r,
+              line.slice(0, editor.col) + line.slice(editor.col + 1),
+            );
+            edShiftMarkers(r, editor.col + 1, -1);
+            editorSyncPage();
+          }
+        }
+
+        function editorEnter() {
+          const r = editor.row;
+          if (r === 0) {
+            editor.row = 2;
+            editor.col = 0;
+            editorSyncPage();
+            return;
+          }
+          const line = edGetRow(r);
+          const head = line.slice(0, editor.col);
+          const tail = line.slice(editor.col);
+          const idx = r - 2;
+          while (editor.lines.length < idx) editor.lines.push("");
+          editor.lines[idx] = head;
+          editor.lines.splice(idx + 1, 0, tail);
+          edShiftMarkerRows(r + 1, 1);
+          // lo que quedaba a la derecha del corte baja junto con su texto
+          for (const k of ["spawn", "prev", "next"]) {
+            const mk = editor.markers[k];
+            if (mk && mk.row === r && mk.col > editor.col) {
+              mk.row = r + 1;
+              mk.col -= editor.col;
+            }
+          }
+          editor.row = Math.min(MAX_ROW, r + 1);
+          editor.col = 0;
+          editorSyncPage();
+        }
+
+        function editorMoveCaret(dRow, dCol, opts) {
+          if (dRow < 0) {
+            const p = edPrevRow(editor.row);
+            if (p !== null) editor.row = p;
+          } else if (dRow > 0) {
+            editor.row = Math.min(MAX_ROW, edNextRow(editor.row));
+          }
+          if (dCol < 0) {
+            if (editor.col > 0) editor.col--;
+            else {
+              const p = edPrevRow(editor.row);
+              if (p !== null) {
+                editor.row = p;
+                editor.col = edGetRow(p).length;
+              }
+            }
+          } else if (dCol > 0) {
+            editor.col = Math.min(MAX_COL, editor.col + 1);
+          }
+          if (opts && opts.home) editor.col = 0;
+          if (opts && opts.end) editor.col = edGetRow(editor.row).length;
+          editorSyncPage();
+        }
+
+        // ---------- Marcas: aparición y flechas ----------
+        // En el archivo, cada marca ocupa 3 caracteres ("(^)", "(<)", "(*)"),
+        // así que dos marcas del mismo renglón no pueden quedar a menos de 3
+        // columnas: la de más a la derecha se corre sola. No es un error del
+        // editor, es cómo se guardan; lo que se ve en pantalla siempre es la
+        // posición final de verdad, pero conviene avisarlo.
+        function editorMarkerConflict() {
+          const rows = {};
+          for (const k of ["spawn", "prev", "next"]) {
+            const mk = editor.markers[k];
+            if (!mk) continue;
+            (rows[mk.row] = rows[mk.row] || []).push(mk.col);
+          }
+          for (const r in rows) {
+            const cols = rows[r].sort((a, b) => a - b);
+            for (let i = 1; i < cols.length; i++) {
+              if (cols[i] - cols[i - 1] < 3) return true;
+            }
+          }
+          return false;
+        }
+
+        function editorPlaceMarker(kind) {
+          const cur = editor.markers[kind];
+          if (cur && cur.row === editor.row && cur.col === editor.col) {
+            editor.markers[kind] = null;
+            editorFlash(MARKER_NAMES[kind] + ": sacada");
+          } else {
+            editor.markers[kind] = { row: editor.row, col: editor.col };
+            editorFlash(
+              editorMarkerConflict()
+                ? "dos marcas en el mismo renglón necesitan 3 columnas de separación"
+                : MARKER_NAMES[kind] + ": acá",
+            );
+          }
+          editorSyncPage();
+        }
+
+        function editorToggleGrowsUp() {
+          editor.growsUp = !editor.growsUp;
+          editorFlash(
+            editor.growsUp
+              ? "este nivel crece hacia arriba"
+              : "este nivel crece hacia abajo",
+          );
+          editorSyncPage();
+          editorRefreshUI();
+          camY = caretWorldY() + LINE_H / 2 - viewH / 2;
+        }
+
+        // ---------- Abrir / cerrar el editor ----------
+        let savedPageIndex = 0;
+
+        function editorOpen() {
+          if (editor.active) return;
+          savedPageIndex = pageIndex;
+          editor.active = true;
+          editor.playing = false;
+          transitioning = false;
+          navCooldown = 0;
+          navHitLeft = navHitRight = 0;
+          trail = [];
+          if (editorBanner) editorBanner.classList.remove("hidden");
+          if (editorBar) editorBar.classList.remove("hidden");
+          if (editorCaretInfo) editorCaretInfo.classList.remove("hidden");
+          if (helpBubble) helpBubble.classList.add("hidden");
+          if (mobileTip) mobileTip.classList.add("hidden");
+          editorSyncPage();
+          camX = getTargetCamX();
+          camY = caretWorldY() + LINE_H / 2 - viewH / 2;
+          editorRefreshUI();
+          editorFocusProxy();
+          editorFlash("escribí el nivel · ▶ probar para jugarlo");
+        }
+
+        function editorClose() {
+          editor.active = false;
+          editor.playing = false;
+          editorSource = null;
+          if (editorBanner) editorBanner.classList.add("hidden");
+          if (editorBar) editorBar.classList.add("hidden");
+          if (editorCaretInfo) editorCaretInfo.classList.add("hidden");
+          if (editorPanel) editorPanel.classList.add("hidden");
+          if (typeProxy) typeProxy.blur();
+          pageIndex = savedPageIndex;
+          pageNum = pageIndex + 1;
+          page = pageHistory[pageIndex] || buildPage(pageIndex);
+          resetPlayerToPageStart();
+          camX = getTargetCamX();
+          camY = player.y - viewH / 2 + player.h / 2;
+          navCooldown = 45;
+          transitioning = false;
+        }
+
+        // ---------- Probar el nivel adentro del editor ----------
+        function editorStartTest() {
+          if (!editor.active || editor.playing) return;
+          editorSyncPage();
+          editor.playing = true;
+          deaths = 0;
+          trail = [];
+          navHitLeft = navHitRight = 0;
+          navImpactLeft = navImpactRight = null;
+          transitioning = false;
+          resetPlayerToPageStart();
+          camX = getTargetCamX();
+          camY = player.y - viewH / 2 + player.h / 2;
+          navCooldown = 45;
+          if (typeProxy) typeProxy.blur();
+          editorRefreshUI();
+          editorFlash("probando · esc para volver a escribir");
+        }
+
+        function editorStopTest() {
+          if (!editor.active || !editor.playing) return;
+          editor.playing = false;
+          transitioning = false;
+          trail = [];
+          editorSyncPage();
+          camX = getTargetCamX();
+          camY = caretWorldY() + LINE_H / 2 - viewH / 2;
+          editorRefreshUI();
+          editorFocusProxy();
+        }
+
+        // Al chocar una flecha probando el nivel no hay capítulo al que ir:
+        // la prueba vuelve a empezar desde la aparición.
+        function editorRestartTest(msg) {
+          resetPlayerToPageStart();
+          camX = getTargetCamX();
+          camY = player.y - viewH / 2 + player.h / 2;
+          navCooldown = 45;
+          transitioning = false;
+          if (msg) editorFlash(msg);
+        }
+
+        // ---------- Avisos ----------
+        let editorFlashTimer = null;
+        function editorFlash(msg) {
+          if (!editorFlashEl) return;
+          editorFlashEl.textContent = msg;
+          editorFlashEl.classList.add("show");
+          clearTimeout(editorFlashTimer);
+          editorFlashTimer = setTimeout(
+            () => editorFlashEl.classList.remove("show"),
+            2400,
+          );
+        }
+
+        // ---------- Teclado ----------
+        // Devuelve true cuando la tecla es del editor, para que el juego no
+        // la vuelva a usar (si no, las flechas moverían al personaje mientras
+        // se escribe).
+        function editorHandleKeyDown(e) {
+          if (!editor.active) {
+            if (
+              EDITOR_HOTKEY &&
+              (e.key === "e" || e.key === "E") &&
+              !e.ctrlKey &&
+              !e.metaKey &&
+              !e.altKey
+            ) {
+              e.preventDefault();
+              editorOpen();
+              return true;
+            }
+            return false;
+          }
+
+          const mod = e.ctrlKey || e.metaKey;
+          const active = document.activeElement;
+
+          // los campos de texto de la barra y de los paneles se quedan con
+          // sus teclas: ahí se escribe un número o un mensaje, no el nivel
+          if (
+            active &&
+            active !== typeProxy &&
+            (active.tagName === "INPUT" || active.tagName === "TEXTAREA")
+          ) {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              active.blur();
+              editorClosePanels();
+              editorFocusProxy();
+            }
+            return true;
+          }
+
+          // paneles abiertos ("abrir nivel" / "enviar el nivel")
+          if (editorPanelAbierto()) {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              editorClosePanels();
+              editorFocusProxy();
+            }
+            return true;
+          }
+
+          // probando el nivel: solo salir; el resto de las teclas son del juego
+          if (editor.playing) {
+            if (e.key === "Escape" || (mod && e.key === "Enter")) {
+              e.preventDefault();
+              editorStopTest();
+              return true;
+            }
+            return false;
+          }
+
+          // --- escribiendo ---
+          if (mod && e.key === "Enter") {
+            e.preventDefault();
+            editorStartTest();
+            return true;
+          }
+          if (mod && (e.key === "s" || e.key === "S")) {
+            e.preventDefault();
+            editorDownload();
+            return true;
+          }
+          if (mod && (e.key === "o" || e.key === "O")) {
+            e.preventDefault();
+            editorOpenPanel();
+            return true;
+          }
+          if (mod && (e.key === "m" || e.key === "M")) {
+            e.preventDefault();
+            editorOpenSendPanel();
+            return true;
+          }
+          if (e.altKey && !mod) {
+            const code = e.code;
+            if (code === "KeyP") {
+              e.preventDefault();
+              editorPlaceMarker("spawn");
+              return true;
+            }
+            if (code === "KeyB") {
+              e.preventDefault();
+              editorPlaceMarker("prev");
+              return true;
+            }
+            if (code === "KeyN") {
+              e.preventDefault();
+              editorPlaceMarker("next");
+              return true;
+            }
+            if (code === "KeyU") {
+              e.preventDefault();
+              editorToggleGrowsUp();
+              return true;
+            }
+          }
+          if (mod) return true; // no se le pasan al juego atajos con ctrl/cmd
+
+          switch (e.key) {
+            case "Escape":
+              e.preventDefault();
+              editorClose();
+              return true;
+            case "ArrowLeft":
+              e.preventDefault();
+              editorMoveCaret(0, -1);
+              return true;
+            case "ArrowRight":
+              e.preventDefault();
+              editorMoveCaret(0, 1);
+              return true;
+            case "ArrowUp":
+              e.preventDefault();
+              editorMoveCaret(-1, 0);
+              return true;
+            case "ArrowDown":
+              e.preventDefault();
+              editorMoveCaret(1, 0);
+              return true;
+            case "Home":
+              e.preventDefault();
+              editorMoveCaret(0, 0, { home: true });
+              return true;
+            case "End":
+              e.preventDefault();
+              editorMoveCaret(0, 0, { end: true });
+              return true;
+            case "Enter":
+              e.preventDefault();
+              editorEnter();
+              return true;
+            case "Backspace":
+              e.preventDefault();
+              editorBackspace();
+              return true;
+            case "Delete":
+              e.preventDefault();
+              editorDeleteForward();
+              return true;
+            case "Tab":
+              e.preventDefault();
+              editorInsertText("    ");
+              return true;
+          }
+
+          // caracteres normales. Si el teclado del celular está apuntando a
+          // la caja invisible, el texto llega por su evento "input" y acá no
+          // hay que hacer nada (si no, se escribiría dos veces).
+          if (e.key.length === 1 && active !== typeProxy) {
+            e.preventDefault();
+            editorInsertText(e.key);
+            return true;
+          }
+          return true;
+        }
+
+        // ---------- Escribir desde el teclado del celular ----------
+        // La caja invisible existe solo para que el sistema muestre su
+        // teclado. El carácter cero-ancho la mantiene "no vacía" para que
+        // el borrar también dispare un evento.
+        const PROXY_SEED = "\u200b";
+        function editorFocusProxy() {
+          if (!typeProxy || !isTouchDevice || !isWritingLevel()) return;
+          if (editorPanelAbierto()) return; // el panel tiene sus propios campos
+          typeProxy.value = PROXY_SEED;
+          typeProxy.focus({ preventScroll: true });
+        }
+        if (typeProxy) {
+          typeProxy.addEventListener("input", () => {
+            if (!isWritingLevel()) {
+              typeProxy.value = PROXY_SEED;
+              return;
+            }
+            const v = typeProxy.value;
+            if (v === "") editorBackspace();
+            else {
+              const typed = v.split(PROXY_SEED).join("");
+              if (typed) editorInsertText(typed);
+            }
+            typeProxy.value = PROXY_SEED;
+          });
+        }
+
+        // ---------- Mouse / dedo: llevar el cursor a donde se toca ----------
+        function editorPointToCaret(clientX, clientY) {
+          const rect = canvas.getBoundingClientRect();
+          const wx = (clientX - rect.left) / GAME_SCALE + camX;
+          const wy = (clientY - rect.top) / GAME_SCALE + camY;
+          const rr = Math.round((wy - PAGE_TOP) / LINE_H);
+          let r = page.growsUp ? page.linesPerCol - 1 - rr : rr;
+          if (r < 0) r = 0;
+          if (r === 1) r = 2;
+          editor.row = Math.min(MAX_ROW, r);
+          editor.col = Math.min(
+            MAX_COL,
+            Math.max(0, Math.round((wx - COL_LEFT_START) / CHAR_W)),
+          );
+          editorSyncPage();
+        }
+        canvas.addEventListener("mousedown", (e) => {
+          if (!isWritingLevel()) return;
+          editorPointToCaret(e.clientX, e.clientY);
+        });
+
+        // ---------- Barra de herramientas ----------
+        function editorRefreshUI() {
+          const play = document.getElementById("edPlay");
+          if (play) {
+            play.innerHTML = editor.playing
+              ? "■ volver a escribir<small>esc</small>"
+              : "▶ probar<small>ctrl+enter</small>";
+          }
+          if (editorBar) editorBar.classList.toggle("testing", editor.playing);
+          const grow = document.getElementById("edGrow");
+          if (grow) grow.classList.toggle("on", editor.growsUp);
+          const fin = document.getElementById("edFinal");
+          if (fin) fin.classList.toggle("on", editor.isFinal);
+          if (edNumInput && document.activeElement !== edNumInput) {
+            edNumInput.value = String(editor.levelNumber);
+          }
+          if (editorCaretInfo) {
+            editorCaretInfo.classList.toggle("hidden", editor.playing);
+          }
+        }
+
+        function edOn(id, fn) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("click", () => {
+            fn();
+            el.blur(); // si no, la barra espaciadora volvería a apretar el botón
+            editorFocusProxy();
+          });
+        }
+
+        edOn("edPlay", () =>
+          editor.playing ? editorStopTest() : editorStartTest(),
+        );
+        edOn("edSpawn", () => editorPlaceMarker("spawn"));
+        edOn("edPrev", () => editorPlaceMarker("prev"));
+        edOn("edNext", () => editorPlaceMarker("next"));
+        edOn("edGrow", () => editorToggleGrowsUp());
+        edOn("edQuit", () => editorClose());
+        edOn("edSave", () => editorDownload());
+        edOn("edOpen", () => editorOpenPanel());
+        edOn("edFinal", () => {
+          editor.isFinal = !editor.isFinal;
+          editorRefreshUI();
+          editorFlash(
+            editor.isFinal
+              ? "se guarda como nivelfinal.js"
+              : "se guarda como nivel" + editor.levelNumber + ".js",
+          );
+        });
+        if (edNumInput) {
+          edNumInput.addEventListener("input", () => {
+            const n = parseInt(edNumInput.value, 10);
+            if (!isNaN(n) && n > 0) editor.levelNumber = n;
+          });
+        }
+
+        // ---------- Guardar el nivel ----------
+        function editorExportSource() {
+          const idxExpr = editor.isFinal
+            ? "window.LEVEL_COUNT"
+            : String(Math.max(1, editor.levelNumber) - 1);
+          const rows = editorRows(false);
+          let out = "// Nivel escrito con el modo edición de Casus Liber\n";
+          out += `window.LEVELS[${idxExpr}] = [\n`;
+          for (const l of rows) out += `  ${JSON.stringify(l)},\n`;
+          out += "];\n";
+          const title = editorRawRow(0);
+          if (title.trim()) {
+            out += `window.LEVEL_TITLES[${idxExpr}] = ${JSON.stringify(title)};\n`;
+          }
+          if (editor.growsUp) {
+            out += `window.LEVEL_GROWS_UP[${idxExpr}] = true;\n`;
+          }
+          if (editor.isFinal) {
+            out += "window.FINAL_LEVEL_INDEX = window.LEVEL_COUNT;\n";
+          }
+          return out;
+        }
+
+        function editorDownload() {
+          const filename = editor.isFinal
+            ? "nivelfinal.js"
+            : `nivel${Math.max(1, editor.levelNumber)}.js`;
+          const blob = new Blob([editorExportSource()], {
+            type: "text/javascript",
+          });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            URL.revokeObjectURL(a.href);
+            a.remove();
+          }, 0);
+          editorFlash("descargado " + filename + " → carpeta niveles/");
+        }
+
+        /* ==================================================================
+           ENVIAR EL NIVEL POR CORREO
+
+           Una página web no puede mandar un mail por sí sola: siempre hace
+           falta algo del otro lado que lo despache. Acá ese "algo" es un
+           Apps Script tuyo (gratis, con tu cuenta de Google) que recibe el
+           nivel y te lo reenvía a tu Gmail. El código del script y los pasos
+           para publicarlo están en enviar-nivel.gs.
+
+           Si dejás ENVIO.url vacío, el botón "enviar" igual funciona: abre
+           el programa de correo de quien está jugando con el nivel escrito
+           en el cuerpo del mensaje. Llega lo mismo, pero sin adjunto y
+           teniendo que apretar "enviar" a mano.
+           ================================================================== */
+        const ENVIO = {
+          // URL del Apps Script publicado (termina en /exec)
+          url: "",
+          // tu correo, para el respaldo por mailto y para mostrarlo en el panel
+          correo: "",
+          // la misma clave que pusiste en enviar-nivel.gs
+          clave: "casusliber",
+        };
+
+        function editorPanelAbierto() {
+          return [editorPanel, editorSendPanel].find(
+            (p) => p && !p.classList.contains("hidden"),
+          );
+        }
+        function editorClosePanels() {
+          if (editorPanel) editorPanel.classList.add("hidden");
+          if (editorSendPanel) editorSendPanel.classList.add("hidden");
+        }
+
+        function editorNombreArchivo() {
+          return editor.isFinal
+            ? "nivelfinal.js"
+            : `nivel${Math.max(1, editor.levelNumber)}.js`;
+        }
+
+        function editorSendStatus(msg) {
+          const el = document.getElementById("edSendStatus");
+          if (el) el.textContent = msg || "";
+        }
+
+        function editorOpenSendPanel() {
+          if (!editorSendPanel) return;
+          editorSendStatus("");
+          const intro = document.getElementById("edSendIntro");
+          if (intro) {
+            intro.textContent = ENVIO.url
+              ? "Se le manda por correo al autor del juego, con el archivo del nivel adjunto. También podés descargarlo y guardarlo vos."
+              : "Se abre tu programa de correo con el nivel ya escrito en el mensaje: solo tenés que apretar enviar. También podés descargar el archivo y guardarlo vos.";
+          }
+          const go = document.getElementById("edSendGo");
+          if (go) {
+            go.disabled = false;
+            go.textContent = ENVIO.url ? "enviar" : "abrir el correo";
+          }
+          editorSendPanel.classList.remove("hidden");
+          const autor = document.getElementById("edAuthor");
+          if (autor && !isTouchDevice) autor.focus();
+        }
+
+        // Lo que se manda: el archivo del nivel tal cual, más quién lo hizo.
+        function editorSendPayload() {
+          const autorEl = document.getElementById("edAuthor");
+          const notaEl = document.getElementById("edNote");
+          return {
+            clave: ENVIO.clave,
+            archivo: editorNombreArchivo(),
+            titulo: editorRawRow(0),
+            nombre: (autorEl ? autorEl.value : "").trim() || "anónimo",
+            mensaje: (notaEl ? notaEl.value : "").trim(),
+            contenido: editorExportSource(),
+          };
+        }
+
+        // Camino 1: fetch. Se manda como "text/plain" a propósito — así el
+        // navegador lo trata como pedido simple y no dispara la consulta
+        // previa (preflight) que los Apps Script no saben contestar.
+        async function editorSendByFetch(payload) {
+          const res = await fetch(ENVIO.url, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+            redirect: "follow",
+          });
+          const txt = await res.text();
+          let data = null;
+          try {
+            data = JSON.parse(txt);
+          } catch (e) {}
+          if (data && data.ok) return true;
+          // el script contestó y dijo que no: reintentar no sirve de nada
+          const err = new Error((data && data.error) || "respuesta inesperada");
+          err.respondio = true;
+          throw err;
+        }
+
+        // Camino 2: mandar un formulario de toda la vida contra un iframe
+        // escondido. Esto no pasa por las reglas de origen cruzado, así que
+        // llega aunque el fetch falle; lo que no se puede es leer la
+        // respuesta, o sea que no hay forma de confirmar la recepción.
+        function editorSendByForm(payload) {
+          return new Promise((resolve) => {
+            let frame = document.getElementById("editorSendFrame");
+            if (!frame) {
+              frame = document.createElement("iframe");
+              frame.id = "editorSendFrame";
+              frame.name = "editorSendFrame";
+              frame.style.display = "none";
+              document.body.appendChild(frame);
+            }
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = ENVIO.url;
+            form.target = "editorSendFrame";
+            form.style.display = "none";
+            for (const k in payload) {
+              const i = document.createElement("input");
+              i.type = "hidden";
+              i.name = k;
+              i.value = payload[k];
+              form.appendChild(i);
+            }
+            document.body.appendChild(form);
+            form.submit();
+            setTimeout(() => {
+              form.remove();
+              resolve();
+            }, 1200);
+          });
+        }
+
+        // Camino 3 (o el único, si no configuraste el Apps Script): abrir el
+        // programa de correo con todo escrito. No lleva adjunto porque un
+        // enlace mailto no puede adjuntar archivos, así que el nivel va en el
+        // cuerpo del mensaje.
+        function editorSendByMail(payload) {
+          const destino = ENVIO.correo || "";
+          const cuerpo =
+            `Nivel para Casus Liber: ${payload.archivo}\n` +
+            `Autor: ${payload.nombre}\n` +
+            (payload.mensaje ? `Mensaje: ${payload.mensaje}\n` : "") +
+            `\nGuardá lo que sigue como ${payload.archivo} dentro de la carpeta niveles/\n\n` +
+            payload.contenido;
+          const url =
+            "mailto:" +
+            encodeURIComponent(destino) +
+            "?subject=" +
+            encodeURIComponent("Casus Liber — nivel: " + payload.archivo) +
+            "&body=" +
+            encodeURIComponent(cuerpo);
+          // los enlaces mailto tienen un largo máximo que varía según el
+          // navegador; si el nivel no entra, mejor descargarlo
+          if (url.length > 1900) return false;
+          location.href = url;
+          return true;
+        }
+
+        async function editorSendLevel() {
+          const go = document.getElementById("edSendGo");
+          const payload = editorSendPayload();
+
+          if (!ENVIO.url) {
+            if (editorSendByMail(payload)) {
+              editorSendStatus("abriendo tu programa de correo…");
+            } else {
+              editorDownload();
+              editorSendStatus(
+                "el nivel es muy largo para el correo: se descargó, adjuntalo a mano",
+              );
+            }
+            return;
+          }
+
+          if (go) {
+            go.disabled = true;
+            go.textContent = "enviando…";
+          }
+          editorSendStatus("mandando el nivel…");
+          try {
+            await editorSendByFetch(payload);
+            editorSendStatus("¡listo! el nivel llegó.");
+            editorFlash("nivel enviado");
+            setTimeout(() => {
+              editorClosePanels();
+              editorFocusProxy();
+            }, 1400);
+          } catch (err) {
+            if (err && err.respondio) {
+              // no fue la red: el script recibió el nivel y lo rechazó
+              editorDownload();
+              editorSendStatus(
+                "el envío fue rechazado (" +
+                  err.message +
+                  "). Se descargó el archivo para que lo mandes vos.",
+              );
+            } else {
+              // no llegó a haber respuesta (sin conexión, o el navegador
+              // bloqueó el pedido): se reintenta con el formulario, que no
+              // pasa por esas reglas
+              try {
+                await editorSendByForm(payload);
+                editorSendStatus(
+                  "enviado, aunque no pude confirmar que haya llegado.",
+                );
+                editorFlash("nivel enviado (sin confirmación)");
+              } catch (err2) {
+                editorDownload();
+                editorSendStatus(
+                  "no pude enviarlo: se descargó el archivo para que lo mandes vos.",
+                );
+              }
+            }
+          } finally {
+            if (go) {
+              go.disabled = false;
+              go.textContent = ENVIO.url ? "enviar" : "abrir el correo";
+            }
+          }
+        }
+
+        edOn("edSend", () => editorOpenSendPanel());
+        edOn("edSendGo", () => editorSendLevel());
+        edOn("edSendDownload", () => {
+          editorDownload();
+          editorClosePanels();
+        });
+        edOn("edSendClose", () => editorClosePanels());
+
+        // ---------- Abrir un nivel que ya existe ----------
+        // Saca las marcas del texto y las guarda aparte. Se usa exactamente
+        // el mismo criterio que el motor (indexOf sobre el texto crudo, el
+        // título primero), así abrir y volver a guardar deja el archivo igual.
+        function editorAdoptLevel(rawTitle, rawLines) {
+          editor.markers = { spawn: null, prev: null, next: null };
+          const strip = (t) =>
+            t
+              .replace(/\(\*\)/g, "")
+              .replace(/\(\^\)/g, "")
+              .replace(/\(<\)/g, "");
+          const scan = (text, row) => {
+            for (const k of ["spawn", "prev", "next"]) {
+              if (editor.markers[k]) continue;
+              const i = text.indexOf(MARKER_TAGS[k]);
+              if (i !== -1) editor.markers[k] = { row, col: i };
+            }
+            return strip(text);
+          };
+          editor.title = scan(rawTitle || "", 0);
+          editor.lines = (rawLines || []).map((l, i) => scan(l || "", i + 2));
+          if (!editor.lines.length) editor.lines = [""];
+          editor.row = 2;
+          editor.col = 0;
+        }
+
+        function editorLoadLevel(idx, number, isFinal) {
+          const titles = window.LEVEL_TITLES || [];
+          editorAdoptLevel(titles[idx] || "", (LEVELS[idx] || []).slice());
+          editor.growsUp = !!(window.LEVEL_GROWS_UP || [])[idx];
+          editor.isFinal = !!isFinal;
+          editor.levelNumber = number || 1;
+          editorSyncPage();
+          camX = getTargetCamX();
+          camY = caretWorldY() + LINE_H / 2 - viewH / 2;
+          editorRefreshUI();
+          editorFlash(
+            isFinal ? "abierto el nivel final" : "abierto el nivel " + number,
+          );
+        }
+
+        function editorNewLevel() {
+          editor.title = "";
+          editor.lines = [""];
+          editor.markers = { spawn: null, prev: null, next: null };
+          editor.growsUp = false;
+          editor.isFinal = false;
+          editor.levelNumber = (window.LEVEL_COUNT || 0) + 1;
+          editor.row = 2;
+          editor.col = 0;
+          editorSyncPage();
+          camX = getTargetCamX();
+          camY = caretWorldY() + LINE_H / 2 - viewH / 2;
+          editorRefreshUI();
+          editorFlash("nivel en blanco");
+        }
+
+        function editorOpenPanel() {
+          if (!editorPanel) return;
+          const list = document.getElementById("edLevelList");
+          if (list) {
+            list.innerHTML = "";
+            const count = window.LEVEL_COUNT || 0;
+            for (let i = 0; i < count; i++) {
+              if (!LEVELS[i]) continue;
+              const b = document.createElement("button");
+              b.className = "ed-chip";
+              b.textContent = "nivel " + (i + 1);
+              b.addEventListener("click", () => {
+                editorPanel.classList.add("hidden");
+                editorLoadLevel(i, i + 1, false);
+                editorFocusProxy();
+              });
+              list.appendChild(b);
+            }
+            if (LEVELS[count]) {
+              const b = document.createElement("button");
+              b.className = "ed-chip";
+              b.textContent = "nivel final";
+              b.addEventListener("click", () => {
+                editorPanel.classList.add("hidden");
+                editorLoadLevel(count, count, true);
+                editorFocusProxy();
+              });
+              list.appendChild(b);
+            }
+          }
+          editorPanel.classList.remove("hidden");
+        }
+
+        edOn("edNewLevel", () => {
+          if (editorPanel) editorPanel.classList.add("hidden");
+          editorNewLevel();
+        });
+        edOn("edPanelClose", () => {
+          if (editorPanel) editorPanel.classList.add("hidden");
+        });
+        edOn("edFromFile", () => {
+          if (editorFileInput) editorFileInput.click();
+        });
+
+        if (editorFileInput) {
+          editorFileInput.addEventListener("change", (ev) => {
+            const file = ev.target.files && ev.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                // se corre el archivo contra un "window" de mentira, así no
+                // pisa los niveles que el juego ya tiene cargados
+                const box = {
+                  LEVELS: [],
+                  LEVEL_TITLES: [],
+                  LEVEL_GROWS_UP: [],
+                  LEVEL_COUNT: window.LEVEL_COUNT || 0,
+                };
+                new Function("window", String(reader.result))(box);
+                let idx = -1;
+                box.LEVELS.forEach((v, i) => {
+                  if (v && idx === -1) idx = i;
+                });
+                if (idx === -1) throw new Error("no encontré window.LEVELS");
+                const mFinal = /nivelfinal\.js$/i.test(file.name);
+                const mNum = file.name.match(/nivel(\d+)\.js$/i);
+                editorAdoptLevel(box.LEVEL_TITLES[idx] || "", box.LEVELS[idx]);
+                editor.growsUp = !!box.LEVEL_GROWS_UP[idx];
+                editor.isFinal = mFinal;
+                editor.levelNumber = mNum ? parseInt(mNum[1], 10) : idx + 1;
+                if (editorPanel) editorPanel.classList.add("hidden");
+                editorSyncPage();
+                camX = getTargetCamX();
+                camY = caretWorldY() + LINE_H / 2 - viewH / 2;
+                editorRefreshUI();
+                editorFlash("abierto " + file.name);
+              } catch (err) {
+                editorFlash("no pude leer ese archivo: " + err.message);
+              }
+              editorFileInput.value = "";
+            };
+            reader.readAsText(file);
+          });
+        }
+
         // ---------- Flujo de pantallas ----------
         const hudPage = document.getElementById("hudPage");
         const hudMsg = document.getElementById("hudMsg");
 
+        if (window.PREVIEW_MODE) {
+          const banner = document.getElementById("previewBanner");
+          if (banner) banner.classList.remove("hidden");
+        }
+
         if (hudMsg) {
-          hudMsg.textContent = "¡a saltar!";
-          setTimeout(() => (hudMsg.textContent = ""), 1500);
+          hudMsg.textContent =
+            window.PREVIEW_MODE && LEVELS.length === 0
+              ? "no hay datos de nivel para simular"
+              : "¡a saltar!";
+          setTimeout(() => (hudMsg.textContent = ""), 2200);
+        }
+
+        // "index.html?editor=1" abre el juego directamente escribiendo un
+        // nivel en blanco, sin pasar por la partida
+        if (window.EDITOR_START) {
+          editorNewLevel();
+          editorOpen();
         }
 
         loop();
