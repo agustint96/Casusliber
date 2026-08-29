@@ -1,9 +1,14 @@
 // Nivel escrito con el modo edición de Casus Liber
 window.LEVELS[1] = [
-  "  Casus Liber nace como una idea minimalista",
-  "                                 que",
-  "                                 busca                 reivindicar la escritura",
-  "                                                                      poesía",
-  "                                                                     palabra e imaginación ",
+  "Sobre la naturaleza de la obra",
+  "",
+  "Estructurada al rededor de un principio sencillo: ",
+  "                                                    una gota de tinta debe avanzar sobre la superficie escrita, ",
+  "                                                                                                                 utilizando las l",
+  "                                                                                                                                  e",
+  "                                                                                                                                   t",
+  "                                                                                                                                     r",
+  "                                                                                                                                       a ",
+  "                                                                                                                                         s como sustento... ",
 ];
 window.LEVEL_TITLES[1] = "I. De Natura Operis";
