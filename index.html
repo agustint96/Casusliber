@@ -157,11 +157,30 @@
         pointer-events: none;
       }
 
-      /* ---------- Fundido a blanco al terminar el último nivel ---------- */
+      /* ---------- Nivel invertido ----------
+         Un nivel puede pedir la hoja al revés: tinta blanca sobre papel negro.
+         El dibujo del canvas se da vuelta entero de una pasada (ver el final
+         de draw()); esto es para lo que queda AFUERA del canvas — el marco que
+         se ve en celular y los textos de ayuda —, que si no quedaría blanco
+         alrededor de un nivel negro. */
+      body.nivel-invertido {
+        --paper: #1c1c1c;
+        --ink: #ffffff;
+      }
+      /* el globito de instrucciones tiene el fondo escrito a mano, así que hay
+         que darlo vuelta acá o queda letra blanca sobre fondo blanco */
+      body.nivel-invertido .mobile-tip {
+        background: rgba(28, 28, 28, 0.94);
+        border-color: rgba(255, 255, 255, 0.16);
+      }
+
+      /* ---------- Fundido al terminar el último nivel ---------- */
       .fade-overlay {
         position: fixed;
         inset: 0;
-        background: #ffffff;
+        /* al color de la hoja, no siempre a blanco: si el último nivel está
+           invertido, fundir a blanco sería un flash en la cara */
+        background: var(--paper);
         opacity: 0;
         pointer-events: none;
         transition: opacity 3s ease;
@@ -596,6 +615,9 @@
       <button class="ed-btn writeonly" id="edGrow">
         ↑ crece hacia arriba<small>alt+u</small>
       </button>
+      <button class="ed-btn writeonly" id="edInvert">
+        ◐ invertir colores<small>alt+i</small>
+      </button>
       <div class="ed-sep writeonly"></div>
       <span class="ed-field writeonly"
         >nivel
@@ -708,6 +730,11 @@
       // crece hacia arriba" en el editor. Sin esto (false/undefined), el
       // nivel se arma como siempre: el primer renglón arriba, bajando.
       window.LEVEL_GROWS_UP = [];
+      // Nivel con los colores dados vuelta: lo llena nivelN.js con
+      // window.LEVEL_INVERTED[N-1] = true si el creador tildó "invertir
+      // colores" en el editor. Sin esto, hoja blanca y tinta negra como
+      // siempre.
+      window.LEVEL_INVERTED = [];
       window.LEVEL_COUNT = 18; // <- cambiá este número al agregar/quitar niveles numerados
 
       // ---------- Modo simulación (usado por el Creador de niveles) ----------
@@ -751,6 +778,7 @@
           window.LEVELS = [data.lines || []];
           window.LEVEL_TITLES = [data.title || ""];
           window.LEVEL_GROWS_UP = [!!data.growsUp];
+          window.LEVEL_INVERTED = [!!data.inverted];
           window.PREVIEW_IS_LEVEL_ONE = !!data.isLevelOne;
         }
         window.LEVEL_COUNT = window.LEVELS.length;
@@ -937,7 +965,7 @@
         // se entera de la diferencia y funciona igual en los dos casos: por
         // eso el editor se ve exactamente como el juego.
         const EDITOR_PAGE = -1;
-        let editorSource = null; // { lines, title, growsUp } mientras se edita
+        let editorSource = null; // { lines, title, growsUp, inverted } mientras se edita
 
         // Estado del nivel que se está escribiendo. Ojo con el mapa de filas:
         // el motor arma cada nivel como [título, renglón en blanco, ...líneas],
@@ -956,6 +984,7 @@
           lines: [""],
           title: "",
           growsUp: false,
+          inverted: false,
           row: 2,
           col: 0,
           markers: { spawn: null, prev: null, next: null },
@@ -1083,6 +1112,16 @@
           return !!flags[levelIdx];
         }
 
+        // ¿Este nivel va con los colores dados vuelta? (papel negro, tinta
+        // blanca) No cambia nada de cómo se juega: es solo cómo se ve.
+        function levelInverted(levelIdx) {
+          if (levelIdx === EDITOR_PAGE) {
+            return !!(editorSource && editorSource.inverted);
+          }
+          const flags = window.LEVEL_INVERTED || [];
+          return !!flags[levelIdx];
+        }
+
         // Y en qué pantalla cae el renglón "r" de una página ya construida.
         // Es la misma cuenta que rowY() adentro de buildPage(), pero visible
         // desde afuera: el editor la necesita para saber dónde dibujar el
@@ -1124,6 +1163,7 @@
           // (plataformas, flechas de navegación, aparición del personaje)
           // use siempre la misma cuenta.
           const growsUp = levelGrowsUp(getLevelIndex(pageIdx));
+          const inverted = levelInverted(getLevelIndex(pageIdx));
           function rowY(r) {
             const rr = growsUp ? linesPerCol - 1 - r : r;
             return PAGE_TOP + rr * LINE_H;
@@ -1287,6 +1327,7 @@
             linesPerCol,
             charsPerLine,
             growsUp,
+            inverted,
             startX,
             startY,
           };
@@ -2173,7 +2214,18 @@
           ctx.restore();
         }
 
+        // El marco de afuera del canvas (y los textos de ayuda) se dan vuelta
+        // con una clase en el body. Se toca el DOM solo cuando cambia de
+        // verdad, no en cada cuadro.
+        let invertedSkin = false;
+        function syncInvertedSkin(on) {
+          if (on === invertedSkin) return;
+          invertedSkin = on;
+          document.body.classList.toggle("nivel-invertido", on);
+        }
+
         function draw() {
+          syncInvertedSkin(!!page.inverted);
           drawPaperTexture();
           ctx.save();
           ctx.translate(-camX, -camY);
@@ -2290,6 +2342,24 @@
             navImpactLeft,
           );
           drawNavArrow(boxes.right, 1, navHitRight, true, navImpactRight);
+
+          // ---------- Nivel invertido ----------
+          // En vez de tener dos paletas y acordarse de usar la correcta en
+          // cada uno de los veinte lugares donde se elige un color, se dibuja
+          // todo normal y al final se da vuelta la pantalla entera de una:
+          // "difference" contra blanco es exactamente 255 menos cada canal, o
+          // sea el negativo. Como acá está todo en grises, sale perfecto: la
+          // hoja se vuelve negra, la tinta blanca, y el granulado del papel y
+          // las guías de renglón se dan vuelta solos. Agregar mañana algo
+          // nuevo al dibujo no pide acordarse de nada.
+          if (page.inverted) {
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "difference";
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, viewW, viewH);
+            ctx.restore();
+          }
         }
 
         // ---------- La mancha de tinta ----------
@@ -2652,6 +2722,7 @@
             lines: editorRows(true),
             title,
             growsUp: editor.growsUp,
+            inverted: editor.inverted,
           };
           page = buildPage(EDITOR_PAGE);
           if (editorCaretInfo) {
@@ -2860,6 +2931,17 @@
             );
           }
           editorSyncPage();
+        }
+
+        function editorToggleInverted() {
+          editor.inverted = !editor.inverted;
+          editorFlash(
+            editor.inverted
+              ? "colores invertidos: tinta blanca sobre papel negro"
+              : "colores normales: tinta negra sobre papel blanco",
+          );
+          editorSyncPage();
+          editorRefreshUI();
         }
 
         function editorToggleGrowsUp() {
@@ -3075,6 +3157,11 @@
               editorToggleGrowsUp();
               return true;
             }
+            if (code === "KeyI") {
+              e.preventDefault();
+              editorToggleInverted();
+              return true;
+            }
           }
           if (mod) return true; // no se le pasan al juego atajos con ctrl/cmd
 
@@ -3195,6 +3282,8 @@
           if (editorBar) editorBar.classList.toggle("testing", editor.playing);
           const grow = document.getElementById("edGrow");
           if (grow) grow.classList.toggle("on", editor.growsUp);
+          const inv = document.getElementById("edInvert");
+          if (inv) inv.classList.toggle("on", editor.inverted);
           const fin = document.getElementById("edFinal");
           if (fin) fin.classList.toggle("on", editor.isFinal);
           if (edNumInput && document.activeElement !== edNumInput) {
@@ -3222,6 +3311,7 @@
         edOn("edPrev", () => editorPlaceMarker("prev"));
         edOn("edNext", () => editorPlaceMarker("next"));
         edOn("edGrow", () => editorToggleGrowsUp());
+        edOn("edInvert", () => editorToggleInverted());
         edOn("edQuit", () => editorClose());
         edOn("edSave", () => editorDownload());
         edOn("edOpen", () => editorOpenPanel());
@@ -3257,6 +3347,9 @@
           }
           if (editor.growsUp) {
             out += `window.LEVEL_GROWS_UP[${idxExpr}] = true;\n`;
+          }
+          if (editor.inverted) {
+            out += `window.LEVEL_INVERTED[${idxExpr}] = true;\n`;
           }
           if (editor.isFinal) {
             out += "window.FINAL_LEVEL_INDEX = window.LEVEL_COUNT;\n";
@@ -3544,6 +3637,7 @@
           const titles = window.LEVEL_TITLES || [];
           editorAdoptLevel(titles[idx] || "", (LEVELS[idx] || []).slice());
           editor.growsUp = !!(window.LEVEL_GROWS_UP || [])[idx];
+          editor.inverted = !!(window.LEVEL_INVERTED || [])[idx];
           editor.isFinal = !!isFinal;
           editor.levelNumber = number || 1;
           editorSyncPage();
@@ -3560,6 +3654,7 @@
           editor.lines = [""];
           editor.markers = { spawn: null, prev: null, next: null };
           editor.growsUp = false;
+          editor.inverted = false;
           editor.isFinal = false;
           editor.levelNumber = (window.LEVEL_COUNT || 0) + 1;
           editor.row = 2;
@@ -3628,6 +3723,7 @@
                   LEVELS: [],
                   LEVEL_TITLES: [],
                   LEVEL_GROWS_UP: [],
+                  LEVEL_INVERTED: [],
                   LEVEL_COUNT: window.LEVEL_COUNT || 0,
                 };
                 new Function("window", String(reader.result))(box);
@@ -3640,6 +3736,7 @@
                 const mNum = file.name.match(/nivel(\d+)\.js$/i);
                 editorAdoptLevel(box.LEVEL_TITLES[idx] || "", box.LEVELS[idx]);
                 editor.growsUp = !!box.LEVEL_GROWS_UP[idx];
+                editor.inverted = !!box.LEVEL_INVERTED[idx];
                 editor.isFinal = mFinal;
                 editor.levelNumber = mNum ? parseInt(mNum[1], 10) : idx + 1;
                 if (editorPanel) editorPanel.classList.add("hidden");
