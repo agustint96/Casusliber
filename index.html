@@ -699,10 +699,9 @@
          blanco y se reinicia (en vez de volver en bucle al nivel 1). -->
     <script>
       window.LEVELS = [];
-      // Título opcional por nivel (2 en adelante): lo llena nivelN.js con
+      // Título opcional por nivel: lo llena nivelN.js con
       // window.LEVEL_TITLES[N-1] = "..." si el creador eligió ponerle uno
-      // en el editor. El nivel 1 siempre usa "Casus liber" fijo, sin
-      // importar lo que haya acá.
+      // en el editor. Si no hay título, ese nivel no muestra nada en la barra.
       window.LEVEL_TITLES = [];
       // Dirección de crecimiento por nivel: lo llena nivelN.js con
       // window.LEVEL_GROWS_UP[N-1] = true si el creador tildó "este nivel
@@ -977,20 +976,13 @@
           return LEVELS[levelIdx] || [];
         }
 
-        // Título de un nivel: el nivel 1 (índice 0) siempre es "Casus
-        // liber", fijo. Del nivel 2 en adelante, el título es el que haya
-        // elegido el creador en el editor (window.LEVEL_TITLES), o "" si no
-        // eligió ninguno (en ese caso esa fila queda vacía / sin título).
+        // Título de un nivel: se toma del array window.LEVEL_TITLES si existe,
+        // o "" si no eligió ninguno (en ese caso esa fila queda vacía / sin título).
+        // Esto aplica para TODOS los niveles, incluyendo el nivel 1 (índice 0).
         function getLevelTitle(levelIdx) {
           if (levelIdx === EDITOR_PAGE) {
             return editorSource ? editorSource.title : "";
           }
-          if (window.PREVIEW_MODE) {
-            if (window.PREVIEW_IS_LEVEL_ONE) return "Casus liber";
-            const titles = window.LEVEL_TITLES || [];
-            return titles[0] || "";
-          }
-          if (levelIdx === 0) return "Casus liber";
           const titles = window.LEVEL_TITLES || [];
           return titles[levelIdx] || "";
         }
@@ -1325,8 +1317,31 @@
         // "derretido" por inactividad: recién arranca después de un rato
         // quieto, y crece muy gradualmente — la mancha se hunde y se
         // ensancha por abajo, como tinta real asentándose en el papel
-        const IDLE_MELT_THRESHOLD = 90; // ~1.5s a 60fps antes de empezar
-        const MELT_RAMP_FRAMES = 260; // ~4.3s hasta el derretido máximo
+        const IDLE_MELT_THRESHOLD = 60; // ~1s a 60fps antes de empezar
+        const MELT_RAMP_FRAMES = 180; // ~3s hasta el derretido máximo
+        // Cuánto se deforma la mancha en el derretido máximo: se achata
+        // arriba y chorrea hacia abajo. 1 = como estaba, 1.6 ≈ el chorro
+        // baja el doble. Arriba de ~2.2 la mitad de arriba se aplasta
+        // tanto que el borde se cruza y la mancha se parte: ese es el
+        // techo sano. No mueve el punto donde se apoya (eso sigue atado
+        // al derretido crudo), así que por más que chorree no se despega
+        // del renglón.
+        const MELT_DEPTH = 1.6;
+        // Lo mismo pero en movimiento, y sobre el eje del movimiento REAL, no
+        // solo el horizontal: la mancha se alarga en la dirección en la que
+        // va y arrastra la cola para atrás, así que en un salto el eje largo
+        // va girando con la parábola y la mancha misma dibuja el recorrido.
+        // 0 la deja siempre redonda; 1.6 = a full la cola sale 13 px para
+        // atrás, más o menos una letra y media, y la mancha queda 2.5 veces
+        // más larga que ancha. Ojo que la mancha se dibuja ENCIMA del texto:
+        // cuanto más la estirás, más letras te tapa yendo rápido. Arriba de
+        // ~2.5 es un cometa (el frente tiene un piso para que no se dé vuelta).
+        const MOVE_STRETCH = 1.6;
+        // A qué velocidad el estirón llega al máximo. Correr da 2.5 y un salto
+        // arranca en 10.5, así que con 5 correr se estira a media máquina y el
+        // despegue y la caída llegan al tope: por eso la parábola se lee, se
+        // estira en las puntas y se redondea arriba de todo, donde casi frena.
+        const STRETCH_FULL_SPEED = 5;
 
         const BASE_GRAVITY = 0.3;
         const GRAVITY = BASE_GRAVITY;
@@ -1532,6 +1547,17 @@
         const PEN_WIDTH = 1.7; // grosor del trazo
         const PEN_ALPHA = 0.9;
         const INK_POINT_EVERY = 2.5; // px entre punto y punto del trazo
+        // Cuánto se desvanece el trazo por cuadro: es lo que define el largo
+        // del rastro. Un punto vive 1/TRAIL_FADE cuadros, y a la carrera el
+        // personaje avanza 3 px por cuadro, así que el rastro mide más o menos
+        // 3/TRAIL_FADE px. 0.03 ≈ 100 px (una firma larga), 0.05 ≈ 60 px,
+        // 0.1 ≈ 30 px (apenas una coma pegada al personaje).
+        const TRAIL_FADE = 0.05;
+        // Interruptor del rastro. Apagado: el recorrido lo marca la propia
+        // mancha, estirándose sobre el eje del movimiento (MOVE_STRETCH),
+        // que se lee limpio en vez de dejar ese reguero difuso atrás.
+        // Poniéndolo en true vuelve tal cual estaba, con TRAIL_FADE mandando.
+        const TRAIL_ON = false;
         let playerInk = 1; // 1 = tanque lleno, 0 = se borró
         let inkDistance = 0;
         let trail = []; // los puntos del trazo dibujado en esta vida
@@ -1811,33 +1837,38 @@
           // o despacio, como la línea de una lapicera de verdad.
           const avance = Math.hypot(player.vx, player.vy);
           if (!dying) {
-            if (avance > 0.15) {
-              trailIdleFrames = 0;
-              inkDistance += avance;
-              if (inkDistance >= INK_POINT_EVERY) {
-                inkDistance -= INK_POINT_EVERY;
-                trail.push({
-                  // temblor mínimo: una línea perfecta delata que la trazó una
-                  // máquina y no una mano apoyada sobre el papel
-                  x: player.x + player.w / 2 + (Math.random() - 0.5) * 0.7,
-                  y: player.y + player.h / 2 + (Math.random() - 0.5) * 0.7,
-                  life: 1,
-                });
-              }
-            } else {
-              trailIdleFrames++;
-              if (trailIdleFrames > 2) {
-                trail = [];
+            if (TRAIL_ON) {
+              if (avance > 0.15) {
+                trailIdleFrames = 0;
+                inkDistance += avance;
+                if (inkDistance >= INK_POINT_EVERY) {
+                  inkDistance -= INK_POINT_EVERY;
+                  trail.push({
+                    // temblor mínimo: una línea perfecta delata que la trazó
+                    // una máquina y no una mano apoyada sobre el papel
+                    x: player.x + player.w / 2 + (Math.random() - 0.5) * 0.7,
+                    y: player.y + player.h / 2 + (Math.random() - 0.5) * 0.7,
+                    life: 1,
+                  });
+                }
+              } else {
+                trailIdleFrames++;
+                if (trailIdleFrames > 2) {
+                  trail = [];
+                }
               }
             }
-            // y eso mismo es lo que se gasta
+            // el gasto de tinta NO depende del rastro: se paga por moverse,
+            // se dibuje o no el trazo
             playerInk -= avance / INK_RANGE + INK_TIME_DRAIN;
             if (playerInk < 0) playerInk = 0;
           }
-          
-          // reducir la vida del trail y filtrar los desvanecidos
-          trail.forEach((t) => (t.life -= 0.03));
-          trail = trail.filter((t) => t.life > 0);
+
+          if (TRAIL_ON) {
+            // reducir la vida del trail y filtrar los desvanecidos
+            trail.forEach((t) => (t.life -= TRAIL_FADE));
+            trail = trail.filter((t) => t.life > 0);
+          }
 
           // seguimiento de inactividad: si está parado, en el suelo y casi
           // sin moverse del mismo punto, suma frames quietos; en cuanto se
@@ -2008,21 +2039,21 @@
             );
           }
 
-          // ---------- El trazo de la lapicera ----------
+          // ---------- El trazo de la lapicera (apagado: ver TRAIL_ON) ----------
           // Va DEBAJO de las letras a propósito: la tinta que dejás no tiene
           // que taparte el texto de las plataformas, que es justamente lo que
           // hay que poder leer para jugar.
           //
-          // Es una única línea continua, no un reguero de gotas: una lapicera
-          // apoyada sobre el papel deja trazo, no salpicaduras. Y no se
-          // desvanece, porque la tinta en el papel no se va: queda ahí hasta
-          // que se reinicia el nivel.
-          // rastro de tinta: manchas desvanecientes
-          for (const t of trail) {
-            ctx.fillStyle = `rgba(28,28,28,${t.life * 0.3})`;
-            ctx.beginPath();
-            ctx.arc(t.x, t.y, 2.2 * t.life, 0, Math.PI * 2);
-            ctx.fill();
+          // Cada punto se va desvaneciendo (TRAIL_FADE) y encogiendo, así que
+          // la cola queda gris y borrosa. Por eso hoy está apagado: el
+          // recorrido lo marca la mancha estirándose, con borde nítido.
+          if (TRAIL_ON) {
+            for (const t of trail) {
+              ctx.fillStyle = `rgba(28,28,28,${t.life * 0.3})`;
+              ctx.beginPath();
+              ctx.arc(t.x, t.y, 2.2 * t.life, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
 
           // letras / plataformas
@@ -2072,6 +2103,8 @@
               melt: meltNow,
               facing: player.facing,
               speed: Math.min(Math.hypot(player.vx, player.vy) / 8, 1),
+              vx: player.vx,
+              vy: player.vy,
               alpha: (0.4 + 0.6 * playerInk) * inkLeft,
               scale: 0.5 + 0.5 * playerInk,
             });
@@ -2100,14 +2133,18 @@
         // en coordenadas de mundo. Lo usan el personaje y, en el editor, la
         // marca fantasma del punto de aparición (misma forma, más tenue).
         //   melt   0..1  "derretido" por inactividad
-        //   facing -1/1  hacia dónde mira (estira apenas la panza)
+        //   facing -1/1  hacia dónde mira (la inclina medio píxel)
         //   speed  0..1  qué tan rápido va (agita un poco el borde)
+        //   vx, vy       la velocidad: sobre ese eje se estira la mancha
         //   alpha  0..1  opacidad general
         function drawInkBlob(cx, cy, opts) {
-          const melt = (opts && opts.melt) || 0;
+          const meltRaw = (opts && opts.melt) || 0;
+          const melt = meltRaw * MELT_DEPTH;
           const scale = opts && opts.scale !== undefined ? opts.scale : 1;
           const facing = opts && opts.facing !== undefined ? opts.facing : 1;
           const inkSpeed = (opts && opts.speed) || 0;
+          const velX = (opts && opts.vx) || 0;
+          const velY = (opts && opts.vy) || 0;
           const alpha = opts && opts.alpha !== undefined ? opts.alpha : 1;
 
           ctx.save();
@@ -2117,7 +2154,15 @@
           const inkT = performance.now() * 0.0007; // reloj de la mutación (lento)
           const inkBaseR = 5 * scale;
           const inkPts = 9;
-          const stretchX = facing >= 0 ? 1.04 : 0.96;
+          const leanX = facing >= 0 ? 0.4 : -0.4; // se inclina hacia donde mira
+          // Hacia dónde va y con cuánta fuerza. Quieto no hay dirección que
+          // valga, así que se toma la horizontal y el estirón queda en cero
+          // igual. El tope de 1 es lo que evita que el rebote contra una
+          // flecha (mucho más rápido que correr) la despedace.
+          const vLen = Math.hypot(velX, velY);
+          const dirX = vLen > 0.01 ? velX / vLen : 1;
+          const dirY = vLen > 0.01 ? velY / vLen : 0;
+          const pull = Math.min(vLen / STRETCH_FULL_SPEED, 1) * MOVE_STRETCH;
 
           const blob = [];
           for (let i = 0; i < inkPts; i++) {
@@ -2133,10 +2178,23 @@
               cosA = Math.cos(a);
             // la mitad de abajo se estira, la de arriba se achata
             const bottomStretch = sinA > 0 ? 1 + melt * 1.1 : 1;
-            const topFlatten = sinA < 0 ? 1 - melt * 0.4 : 1;
-            const px = cosA * rBase * stretchX * (1 - melt * 0.15);
-            const py =
-              sinA * rBase * 0.92 * bottomStretch * topFlatten + 1 + melt * 2.5;
+            const topFlatten = sinA < 0 ? Math.max(0.2, 1 - melt * 0.4) : 1;
+            // la forma antes de moverse, ya derretida
+            const formaX = cosA * rBase * (1 - melt * 0.15);
+            const formaY = sinA * rBase * 0.92 * bottomStretch * topFlatten;
+            // Y ahora el arrastre, medido sobre el eje del movimiento: se
+            // parte el punto en cuánto va EN la dirección en la que viaja
+            // (largo) y cuánto de costado (ancho). Lo que queda atrás se
+            // estira, lo de adelante se amontona y el ancho se achata; después
+            // se vuelve a coordenadas de pantalla. Con pull en 0 la cuenta
+            // devuelve la forma intacta, así que quieta no cambia nada.
+            const largo = formaX * dirX + formaY * dirY;
+            const ancho = -formaX * dirY + formaY * dirX;
+            const largoEst =
+              largo * (largo < 0 ? 1 + pull : Math.max(0.3, 1 - pull * 0.35));
+            const anchoEst = ancho * (1 - pull * 0.22);
+            const px = largoEst * dirX - anchoEst * dirY + leanX;
+            const py = largoEst * dirY + anchoEst * dirX + 1 + meltRaw * 2.5;
             blob.push([px, py]);
           }
 
