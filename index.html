@@ -1331,12 +1331,18 @@
         // solo el horizontal: la mancha se alarga en la dirección en la que
         // va y arrastra la cola para atrás, así que en un salto el eje largo
         // va girando con la parábola y la mancha misma dibuja el recorrido.
-        // 0 la deja siempre redonda; 1.6 = a full la cola sale 13 px para
-        // atrás, más o menos una letra y media, y la mancha queda 2.5 veces
-        // más larga que ancha. Ojo que la mancha se dibuja ENCIMA del texto:
-        // cuanto más la estirás, más letras te tapa yendo rápido. Arriba de
-        // ~2.5 es un cometa (el frente tiene un piso para que no se dé vuelta).
-        const MOVE_STRETCH = 1.6;
+        // 0 la deja siempre redonda; 2 = a full mide unos 15 px de largo, casi
+        // dos letras, contra 9 quieta. Ojo que la mancha se dibuja ENCIMA del
+        // texto: cuanto más la estirás, más letras te tapa yendo rápido.
+        const MOVE_STRETCH = 2.0;
+        // Cuánto se ENSANCHA la cola mientras se estira. Es lo único que la
+        // salva de terminar en punta de aguja: estirando sin ensanchar, la
+        // mancha se afina hacia atrás hasta que la punta queda con un radio de
+        // menos de 1 px. Con 0.4 la punta de atrás mantiene más o menos el
+        // mismo redondeo que tiene la mancha quieta, la estires lo que la
+        // estires. Menos que eso vuelve a afinarse; más que eso, la cola se
+        // hincha y la mancha empieza a parecer un renacuajo.
+        const TAIL_ROUND = 0.4;
         // A qué velocidad el estirón llega al máximo. Correr da 2.5 y un salto
         // arranca en 10.5, así que con 5 correr se estira a media máquina y el
         // despegue y la caída llegan al tope: por eso la parábola se lee, se
@@ -1397,6 +1403,7 @@
           // el editor se queda con el teclado mientras está abierto: ahí las
           // flechas mueven el cursor de escritura, no al personaje
           if (editorHandleKeyDown(e)) return;
+          skipLevelIntro();
           if (["ArrowLeft", "ArrowRight", "ArrowUp", " "].includes(e.key))
             e.preventDefault();
           keys[e.key] = true;
@@ -1446,6 +1453,8 @@
             editorFocusProxy();
             return;
           }
+          // tocando la pantalla se corta el vistazo y se juega ya
+          skipLevelIntro();
           for (const t of e.changedTouches) {
             touchStartY.set(t.identifier, t.clientY);
             touchStartX.set(t.identifier, t.clientX);
@@ -1595,6 +1604,7 @@
           camX = getTargetCamX();
           camY = player.y - viewH / 2 + player.h / 2;
           navCooldown = 45;
+          introShown = false; // el nivel nuevo tiene su propia ayuda
           if (hudMsg) {
             hudMsg.textContent = msg;
             setTimeout(() => (hudMsg.textContent = ""), 1200);
@@ -1624,6 +1634,143 @@
             : player.x + player.w / 2;
           const raw = focusX - viewW / 2;
           return Math.min(Math.max(raw, minCamX), maxCamX);
+        }
+
+        /* ==================================================================
+           EL VISTAZO AL NIVEL (solo en pantallas angostas)
+
+           En el celular se ve una franja de 390 px de mundo: entra la letra
+           grande y se juega cómodo, pero no se ve para dónde hay que ir. Si
+           el jugador se queda quieto cinco segundos, es que no sabe para
+           dónde arrancar: ahí la cámara se va hasta la flecha de salida — la
+           de "siguiente", donde termina el nivel —, la muestra un segundo y
+           vuelve. Sin tocar el zoom: se ve todo del mismo tamaño que jugando,
+           así que el viaje muestra el camino que hay que hacer, no una vista
+           distinta del nivel.
+
+           Es una ayuda, no una intro: por eso espera a que haga falta en vez
+           de correr sola al entrar, y por eso va UNA sola vez por nivel. Al
+           que ya sabe adónde va no lo interrumpe nunca, y al que se quedó
+           pensando no se lo repite cada cinco segundos.
+
+           Mientras dura, la física no corre: el personaje queda esperando
+           donde está en vez de caerse mientras mirás otra cosa. Tocando la
+           pantalla o cualquier tecla se corta y se sigue jugando.
+           ================================================================== */
+        // El viaje dura según lo lejos que esté la flecha, no un tiempo fijo:
+        // con un tiempo fijo, un nivel largo obliga a la cámara a cruzarlo a
+        // los pedos y en uno chiquito se arrastra sin motivo. Las velocidades
+        // van en px de mundo por cuadro, y la vuelta es más apurada que la
+        // ida: yendo estás leyendo el nivel, volviendo ya sabés lo que vas a
+        // ver. Arriba de unos 30 px por cuadro la pantalla pasa más rápido de
+        // lo que el ojo sigue y el texto se vuelve un manchón: los topes están
+        // para no llegar nunca ahí, ni siquiera en el nivel más largo.
+        const INTRO_PAN_SPEED = 16;
+        const INTRO_BACK_SPEED = 20;
+        const INTRO_GO_MIN = 22; // ~0.4 s
+        const INTRO_GO_MAX = 55; // ~0.9 s
+        const INTRO_BACK_MIN = 18;
+        const INTRO_BACK_MAX = 45;
+        const INTRO_HOLD_FRAMES = 24; // mostrar la flecha (~0.4 s)
+        // Cuánto tiene que estar quieto para que se le muestre. Usa el mismo
+        // idleFrames que el derretido, o sea: parado en el piso y sin moverse
+        // del lugar. Cualquier tecla, salto o caída lo reinicia.
+        const INTRO_IDLE_FRAMES = 300; // 5 s a 60 cuadros por segundo
+        let introShown = false; // ya se mostró en este nivel
+        let introGoFrames = INTRO_GO_MIN;
+        let introBackFrames = INTRO_GO_MIN;
+        let introFrames = 0;
+        let introTotal = 0;
+        let introCentroX = 0,
+          introCentroY = 0;
+
+        // cuántos cuadros tarda un viaje de tantos px a tal velocidad
+        function introCuadros(viaje, velocidad, minimo, maximo) {
+          return Math.round(
+            Math.min(maximo, Math.max(minimo, viaje / velocidad)),
+          );
+        }
+
+        function startLevelIntro() {
+          introFrames = 0;
+          // en escritorio ya se ve toda la columna: sacá esta línea si lo
+          // querés también ahí
+          if (!isNarrowScreen) return;
+          if (editor.active) return;
+          // el centro exacto de la flecha de salida, la misma cuenta que hace
+          // getNavBoxes() para dibujarla
+          introCentroX =
+            page.navRowLastCharEndX + NAV_GAP_RIGHT + NAV_BOX_W / 2;
+          introCentroY = page.rightNavRowY;
+          // cuánto se mueve la cámara: de donde la deja el juego al arrancar,
+          // hasta tener la flecha en el medio de la pantalla
+          const viaje = Math.hypot(
+            introCentroX - viewW / 2 - getTargetCamX(),
+            introCentroY - viewH / 2 - (player.y - viewH / 2 + player.h / 2),
+          );
+          introGoFrames = introCuadros(
+            viaje,
+            INTRO_PAN_SPEED,
+            INTRO_GO_MIN,
+            INTRO_GO_MAX,
+          );
+          introBackFrames = introCuadros(
+            viaje,
+            INTRO_BACK_SPEED,
+            INTRO_BACK_MIN,
+            INTRO_BACK_MAX,
+          );
+          introTotal = introGoFrames + INTRO_HOLD_FRAMES + introBackFrames;
+          introFrames = introTotal;
+        }
+
+        function endLevelIntro() {
+          introFrames = 0;
+          camX = getTargetCamX();
+          camY = player.y - viewH / 2 + player.h / 2;
+        }
+
+        // Dónde está la cámara en este momento: 0 = encima del personaje,
+        // 1 = encima de la flecha de salida.
+        function introT(pasado) {
+          let t;
+          if (pasado <= introGoFrames) {
+            t = pasado / introGoFrames;
+          } else if (pasado <= introGoFrames + INTRO_HOLD_FRAMES) {
+            t = 1;
+          } else {
+            t =
+              1 -
+              (pasado - introGoFrames - INTRO_HOLD_FRAMES) / introBackFrames;
+          }
+          return Math.max(0, Math.min(1, t));
+        }
+
+        // Tocar la pantalla no lo corta de golpe: eso dejaría la cámara
+        // pegando un salto desde donde esté. Salta a la vuelta, al mismo punto
+        // en el que está, así se vuelve de una y sin tirón.
+        function skipLevelIntro() {
+          if (introFrames <= 0) return;
+          introFrames = Math.ceil(
+            introBackFrames * introT(introTotal - introFrames),
+          );
+          if (introFrames <= 0) endLevelIntro();
+        }
+
+        function updateLevelIntro() {
+          introFrames--;
+          const t = introT(introTotal - introFrames);
+          const suave = t * t * (3 - 2 * t); // arranca y frena despacio
+
+          // la cámara viaja entre donde la dejaría el juego y la flecha; en
+          // las dos puntas la cuenta da exactamente lo mismo que la cámara
+          // normal, así que ni al empezar ni al terminar hay saltos
+          const juegoX = getTargetCamX();
+          const juegoY = player.y - viewH / 2 + player.h / 2;
+          camX = juegoX + (introCentroX - viewW / 2 - juegoX) * suave;
+          camY = juegoY + (introCentroY - viewH / 2 - juegoY) * suave;
+
+          if (introFrames <= 0) endLevelIntro();
         }
 
         // Se llama al tocar la flecha derecha en el último nivel
@@ -1699,6 +1846,11 @@
           if (isWritingLevel()) {
             camX += (getTargetCamX() - camX) * 0.2;
             camY += (caretWorldY() + LINE_H / 2 - viewH / 2 - camY) * 0.2;
+            return;
+          }
+          // el vistazo del arranque: la cámara se mueve sola y nada más
+          if (introFrames > 0) {
+            updateLevelIntro();
             return;
           }
           // seguimos corriendo la física (gravedad, movimiento, colisiones)
@@ -1884,6 +2036,19 @@
             idleFrames = 0;
             idleAnchor.x = player.x;
             idleAnchor.y = player.y;
+          }
+
+          // y si lleva demasiado quieto, se le muestra dónde está la salida
+          if (
+            !introShown &&
+            idleFrames >= INTRO_IDLE_FRAMES &&
+            !dying &&
+            !transitioning
+          ) {
+            // se marca acá y no adentro, así tampoco se reintenta en los casos
+            // en los que startLevelIntro decide no hacer nada (escritorio)
+            introShown = true;
+            startLevelIntro();
           }
 
           // cámara: en desktop horizontal siempre centrada en la columna de
@@ -2190,9 +2355,18 @@
             // devuelve la forma intacta, así que quieta no cambia nada.
             const largo = formaX * dirX + formaY * dirY;
             const ancho = -formaX * dirY + formaY * dirX;
+            // 0 en el medio de la mancha, 1 en la punta de la cola
+            const atras = Math.min(1, Math.max(0, -largo) / rBase);
+            // Atrás se estira y se ensancha a la vez (por eso la punta queda
+            // redonda); adelante se amontona y se afina un poco.
             const largoEst =
-              largo * (largo < 0 ? 1 + pull : Math.max(0.3, 1 - pull * 0.35));
-            const anchoEst = ancho * (1 - pull * 0.22);
+              largo < 0
+                ? largo * (1 + pull)
+                : largo * Math.max(0.3, 1 - pull * 0.35);
+            const anchoEst =
+              largo < 0
+                ? ancho * (1 + pull * TAIL_ROUND * atras)
+                : ancho * (1 - pull * 0.15);
             const px = largoEst * dirX - anchoEst * dirY + leanX;
             const py = largoEst * dirY + anchoEst * dirX + 1 + meltRaw * 2.5;
             blob.push([px, py]);
