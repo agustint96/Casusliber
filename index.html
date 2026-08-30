@@ -499,6 +499,22 @@
         min-height: 18px;
         margin: 0 0 10px !important;
       }
+      /* La hoja donde se pega un dibujo va en monoespaciado de verdad (no en
+         la manuscrita del resto) y sin cortar renglones: es la única forma de
+         ver si la forma quedó derecha ANTES de meterla en el nivel. */
+      .ed-paste {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.3;
+        white-space: pre;
+        overflow: auto;
+        height: 32vh;
+        min-height: 110px;
+        border: 1px solid rgba(28, 28, 28, 0.22);
+        padding: 6px 8px;
+        resize: none;
+        tab-size: 4;
+      }
       /* caja de texto invisible: solo existe para que en celular/tablet
          aparezca el teclado del sistema y se pueda escribir el nivel */
       #editorTypeProxy {
@@ -619,6 +635,13 @@
         ◐ invertir colores<small>alt+i</small>
       </button>
       <div class="ed-sep writeonly"></div>
+      <button class="ed-btn writeonly" id="edCopy">
+        &#10064; copiar<small>ctrl+c</small>
+      </button>
+      <button class="ed-btn writeonly" id="edPasteArt">
+        &#9635; pegar dibujo<small>ctrl+v</small>
+      </button>
+      <div class="ed-sep writeonly"></div>
       <span class="ed-field writeonly"
         >nivel
         <input
@@ -687,6 +710,38 @@
             descargar en vez de enviar
           </button>
           <button class="ed-chip" id="edSendClose">cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pegar un dibujo. Existe además del ctrl+v de siempre por dos
+         razones: en celular no hay ctrl, y conviene ver el dibujo entero
+         (y cuánto mide) antes de meterlo adentro del nivel. -->
+    <div class="editor-panel hidden" id="editorPastePanel">
+      <div class="sheet">
+        <h2>Pegar un dibujo</h2>
+        <p>
+          Pegá acá adentro el dibujo de texto que hayas copiado. Cada caracter
+          que no sea un espacio se vuelve plataforma, igual que las letras que
+          escribís a mano.
+        </p>
+        <textarea
+          class="ed-input ed-paste"
+          id="edPasteText"
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+        ></textarea>
+        <p class="ed-status" id="edPasteSize"></p>
+        <div class="levels">
+          <button class="ed-chip" id="edPasteInsert">
+            pegar en renglones nuevos
+          </button>
+          <button class="ed-chip" id="edPasteStamp">
+            calcar sobre lo que hay
+          </button>
+          <button class="ed-chip" id="edPasteClose">cancelar</button>
         </div>
       </div>
     </div>
@@ -987,6 +1042,9 @@
           inverted: false,
           row: 2,
           col: 0,
+          // ancla del pedazo elegido (la otra punta es siempre el cursor);
+          // null = no hay nada elegido
+          sel: null,
           markers: { spawn: null, prev: null, next: null },
           levelNumber: 1,
           isFinal: false,
@@ -2588,6 +2646,7 @@
         const editorFlashEl = document.getElementById("editorFlash");
         const editorPanel = document.getElementById("editorPanel");
         const editorSendPanel = document.getElementById("editorSendPanel");
+        const editorPastePanel = document.getElementById("editorPastePanel");
         const editorFileInput = document.getElementById("editorFileInput");
         const typeProxy = document.getElementById("editorTypeProxy");
         const edNumInput = document.getElementById("edNum");
@@ -2751,6 +2810,26 @@
           ctx.fillStyle = "rgba(28,28,28,0.045)";
           ctx.fillRect(-2000, y - 6, page.worldWidth + 4000, LINE_H - 6);
 
+          // el pedazo elegido: un gris parejo sobre los caracteres, como
+          // pasar el dedo sobre un renglón escrito a lápiz
+          if (edHasSel()) {
+            const { from, to } = edSelRange();
+            ctx.fillStyle = "rgba(28,28,28,0.16)";
+            for (let r = from.row; r <= to.row; r++) {
+              if (r === 1) continue;
+              const largo = edGetRow(r).length;
+              const c0 = r === from.row ? from.col : 0;
+              const c1 = r === to.row ? to.col : Math.max(largo, c0 + 1);
+              if (c1 <= c0) continue;
+              ctx.fillRect(
+                COL_LEFT_START + c0 * CHAR_W - 1,
+                pageRowY(page, r) - 4,
+                (c1 - c0) * CHAR_W,
+                LINE_H - 8,
+              );
+            }
+          }
+
           // aclaración al margen de que el primer renglón es el título
           if (editor.row === 0) {
             ctx.save();
@@ -2779,6 +2858,14 @@
         function editorInsertText(str) {
           const text = String(str).replace(/[\r\n\t]/g, " ");
           if (!text) return;
+          // escribir con un pedazo elegido lo reemplaza, como en cualquier
+          // editor de texto
+          if (edHasSel()) {
+            edSnapshot("borrar");
+            edSelDelete();
+          } else {
+            edSnapshot("tecleo");
+          }
           const r = editor.row;
           let line = edGetRow(r);
           if (editor.col > line.length) line = line.padEnd(editor.col, " ");
@@ -2805,6 +2892,12 @@
         }
 
         function editorBackspace() {
+          if (edHasSel()) {
+            edSnapshot("borrar");
+            edSelDelete();
+            editorSyncPage();
+            return;
+          }
           const r = editor.row;
           const line = edGetRow(r);
           if (editor.col > 0) {
@@ -2833,6 +2926,12 @@
         }
 
         function editorDeleteForward() {
+          if (edHasSel()) {
+            edSnapshot("borrar");
+            edSelDelete();
+            editorSyncPage();
+            return;
+          }
           const r = editor.row;
           const line = edGetRow(r);
           if (editor.col < line.length) {
@@ -2843,6 +2942,10 @@
         }
 
         function editorEnter() {
+          if (edHasSel()) {
+            edSnapshot("borrar");
+            edSelDelete();
+          }
           const r = editor.row;
           if (r === 0) {
             editor.row = 2;
@@ -2872,6 +2975,13 @@
         }
 
         function editorMoveCaret(dRow, dCol, opts) {
+          // con shift apretado el cursor arrastra una selección: si todavía
+          // no había ancla, queda donde estaba el cursor antes de moverse
+          if (opts && opts.select) {
+            if (!editor.sel) editor.sel = { row: editor.row, col: editor.col };
+          } else {
+            editor.sel = null;
+          }
           if (dRow < 0) {
             const p = edPrevRow(editor.row);
             if (p !== null) editor.row = p;
@@ -2892,8 +3002,550 @@
           }
           if (opts && opts.home) editor.col = 0;
           if (opts && opts.end) editor.col = edGetRow(editor.row).length;
+          edClampSelZone();
           editorSyncPage();
         }
+
+        /* ==================================================================
+           COPIAR Y PEGAR
+
+           Un nivel es texto, así que puede venir texto de afuera. Un dibujo
+           ASCII copiado de cualquier página entra tal cual y cada caracter
+           que no sea un espacio se vuelve plataforma, exactamente igual que
+           una letra escrita a mano acá adentro: no hay un formato aparte ni
+           un tipo de objeto nuevo, todo termina en el mismo editor.lines.
+
+           Hay dos maneras de pegar, porque sirven para cosas distintas:
+             · en renglones nuevos (ctrl+v): el dibujo entra empujando hacia
+               abajo lo que hubiera. Es lo natural en un nivel en blanco.
+             · calcando (ctrl+shift+v): el dibujo se apoya encima sin correr
+               nada, y por sus espacios se sigue viendo lo que ya estaba.
+               Es lo que sirve para meterle un dibujo a un nivel ya armado.
+           ================================================================== */
+
+        // ---------- Deshacer ----------
+        // Pegar mueve muchos renglones de golpe, así que no puede ser un
+        // camino de ida. Se guarda el estado antes de cada cambio grande
+        // (pegar, cortar, borrar un pedazo) y de cada tanda de tecleo.
+        const UNDO_MAX = 40;
+        const edUndo = [];
+        const edRedo = [];
+        let edUndoAt = 0;
+        let edUndoKind = "";
+
+        function edState() {
+          return {
+            title: editor.title,
+            lines: editor.lines.slice(),
+            markers: {
+              spawn: editor.markers.spawn ? { ...editor.markers.spawn } : null,
+              prev: editor.markers.prev ? { ...editor.markers.prev } : null,
+              next: editor.markers.next ? { ...editor.markers.next } : null,
+            },
+            row: editor.row,
+            col: editor.col,
+          };
+        }
+        function edRestore(s) {
+          editor.title = s.title;
+          editor.lines = s.lines.slice();
+          editor.markers = {
+            spawn: s.markers.spawn ? { ...s.markers.spawn } : null,
+            prev: s.markers.prev ? { ...s.markers.prev } : null,
+            next: s.markers.next ? { ...s.markers.next } : null,
+          };
+          editor.row = s.row;
+          editor.col = s.col;
+          editor.sel = null;
+          editorSyncPage();
+          camY = caretWorldY() + LINE_H / 2 - viewH / 2;
+        }
+        // "kind" sirve para agrupar: escribir letra por letra no llena la
+        // pila con un estado por tecla, se junta todo lo que se escribió
+        // seguido en menos de un segundo.
+        function edSnapshot(kind) {
+          const now = performance.now();
+          if (
+            kind === "tecleo" &&
+            edUndo.length &&
+            edUndoKind === "tecleo" &&
+            now - edUndoAt < 900
+          ) {
+            edUndoAt = now;
+            return;
+          }
+          edUndo.push(edState());
+          if (edUndo.length > UNDO_MAX) edUndo.shift();
+          edRedo.length = 0;
+          edUndoAt = now;
+          edUndoKind = kind || "";
+        }
+        function edForgetHistory() {
+          edUndo.length = 0;
+          edRedo.length = 0;
+          edUndoKind = "";
+        }
+        function editorUndo() {
+          if (!edUndo.length) {
+            editorFlash("no hay nada para deshacer");
+            return;
+          }
+          edRedo.push(edState());
+          edRestore(edUndo.pop());
+          edUndoKind = "";
+          editorFlash("deshecho");
+        }
+        function editorRedo() {
+          if (!edRedo.length) {
+            editorFlash("no hay nada para rehacer");
+            return;
+          }
+          edUndo.push(edState());
+          edRestore(edRedo.pop());
+          edUndoKind = "";
+          editorFlash("rehecho");
+        }
+
+        // ---------- El pedazo elegido ----------
+        // editor.sel guarda el ANCLA; la otra punta es siempre el cursor.
+        // El título es un renglón aparte del cuerpo del nivel, así que lo
+        // elegido nunca cruza de uno al otro (si no, borrar un pedazo
+        // pegaría el título con el primer renglón).
+        function edSelZone(r) {
+          return r === 0 ? 0 : 1;
+        }
+        function edHasSel() {
+          const s = editor.sel;
+          return !!s && !(s.row === editor.row && s.col === editor.col);
+        }
+        function edClampSelZone() {
+          const s = editor.sel;
+          if (!s || edSelZone(s.row) === edSelZone(editor.row)) return;
+          if (edSelZone(s.row) === 0) {
+            editor.row = 0;
+            editor.col = edGetRow(0).length;
+          } else {
+            editor.row = 2;
+            editor.col = 0;
+          }
+        }
+        // Las dos puntas ordenadas: de arriba-izquierda a abajo-derecha.
+        function edSelRange() {
+          const a = editor.sel || { row: editor.row, col: editor.col };
+          const b = { row: editor.row, col: editor.col };
+          const aPrimero =
+            a.row < b.row || (a.row === b.row && a.col <= b.col);
+          const first = aPrimero ? a : b;
+          const last = aPrimero ? b : a;
+          return {
+            from: { row: first.row, col: first.col },
+            to: { row: last.row, col: last.col },
+          };
+        }
+        function edSelText() {
+          const { from, to } = edSelRange();
+          if (from.row === to.row) {
+            return edGetRow(from.row).slice(from.col, to.col);
+          }
+          const out = [];
+          for (let r = from.row; r <= to.row; r++) {
+            const line = r === 1 ? "" : edGetRow(r);
+            if (r === from.row) out.push(line.slice(from.col));
+            else if (r === to.row) out.push(line.slice(0, to.col));
+            else out.push(line);
+          }
+          return out.join("\n");
+        }
+        // Saca lo elegido y deja el cursor donde empezaba.
+        function edSelDelete() {
+          const { from, to } = edSelRange();
+          if (from.row === to.row) {
+            const line = edGetRow(from.row);
+            edSetRow(from.row, line.slice(0, from.col) + line.slice(to.col));
+            edShiftMarkers(from.row, to.col, -(to.col - from.col));
+          } else {
+            const head = edGetRow(from.row).slice(0, from.col);
+            const tail = edGetRow(to.row).slice(to.col);
+            edSetRow(from.row, head + tail);
+            for (let r = to.row; r > from.row; r--) editorDeleteRow(r);
+          }
+          editor.row = from.row;
+          editor.col = from.col;
+          editor.sel = null;
+        }
+        function editorSelectAll() {
+          const last = Math.max(2, editor.lines.length + 1);
+          editor.sel = { row: 2, col: 0 };
+          editor.row = last;
+          editor.col = edGetRow(last).length;
+          editorSyncPage();
+          editorFlash("todo el nivel elegido (el título va aparte)");
+        }
+
+        // ---------- Limpiar lo que viene de afuera ----------
+        // Un dibujo copiado de una página web casi nunca viene limpio: trae
+        // fin de línea de Windows, tabulaciones y, sobre todo, espacios que
+        // NO son el espacio de siempre (el "duro" que usan los navegadores
+        // para que no se corte una línea, los tipográficos, el ideográfico).
+        // Esos son los peores: se ven como un hueco pero el juego los tomaría
+        // como plataformas invisibles y el nivel se volvería injugable sin
+        // que se entienda por qué. Acá pasan todos a un espacio común.
+        const TAB_STOP = 4;
+        function editorCleanPasted(raw) {
+          let t = String(raw == null ? "" : raw);
+          t = t.replace(/\r\n?/g, "\n");
+          t = t.replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g, " ");
+          // caracteres de ancho cero: no se ven, no se pueden pisar, afuera
+          t = t.replace(/[\u200b-\u200d\u2060\ufeff]/g, "");
+          let lines = t.split("\n").map((l) => {
+            // la tabulación se estira hasta la próxima marca, así el dibujo
+            // conserva la forma que tenía donde lo copiaste
+            let out = "";
+            for (const ch of l) {
+              if (ch === "\t") {
+                out += " ".repeat(TAB_STOP - (out.length % TAB_STOP));
+              } else {
+                out += ch;
+              }
+            }
+            return out.replace(/\s+$/, "");
+          });
+          // los renglones vacíos de arriba y de abajo sobran siempre
+          while (lines.length && !lines[0].trim()) lines.shift();
+          while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+          // Sangría común: si TODO el dibujo viene corrido hacia la derecha
+          // (típico de copiar de adentro de un bloque de código), se le saca
+          // ese margen para que caiga donde está el cursor y no más allá.
+          let sangria = Infinity;
+          for (const l of lines) {
+            if (!l.trim()) continue;
+            sangria = Math.min(sangria, l.length - l.replace(/^ +/, "").length);
+          }
+          if (sangria > 0 && sangria !== Infinity) {
+            lines = lines.map((l) => l.slice(sangria));
+          }
+          return lines;
+        }
+
+        // ---------- Pegar ----------
+        // Mete un dibujo (renglones ya limpios) donde está el cursor.
+        //   calcar = false → los renglones nuevos empujan hacia abajo
+        //   calcar = true  → se apoya encima y sus espacios no borran nada
+        // Del segundo renglón en adelante, el dibujo arranca en la misma
+        // columna que el cursor: en una grilla un dibujo se pega derecho o
+        // se desarma, así que se respeta su forma antes que la costumbre de
+        // los editores de texto de mandar todo al margen izquierdo.
+        function editorPasteLines(lines, calcar) {
+          if (!lines || !lines.length) {
+            editorFlash("no había nada para pegar");
+            return;
+          }
+          // el título es un solo renglón: un dibujo entero no entra ahí
+          if (editor.row === 0 && lines.length > 1) {
+            editor.row = 2;
+            editor.col = 0;
+          }
+          edSnapshot("pegar");
+          if (edHasSel()) edSelDelete();
+
+          const startRow = editor.row;
+          const startCol = editor.col;
+
+          // Las marcas "(^)" "(<)" "(*)" que vengan escritas adentro del
+          // texto (por ejemplo, al pegar un nivel entero copiado de otro
+          // lado) se sacan del dibujo y se guardan como marcas de verdad.
+          // Si quedaran como texto, el motor las leería igual y aparecería
+          // una flecha o una aparición en un lugar que nadie eligió.
+          const marcas = [];
+          const limpio = lines.map((line, i) => {
+            let out = line;
+            for (;;) {
+              let at = -1;
+              let kind = null;
+              for (const k of ["spawn", "prev", "next"]) {
+                const p = out.indexOf(MARKER_TAGS[k]);
+                if (p !== -1 && (at === -1 || p < at)) {
+                  at = p;
+                  kind = k;
+                }
+              }
+              if (at === -1) break;
+              out = out.slice(0, at) + out.slice(at + 3);
+              marcas.push({ kind, row: i, col: at });
+            }
+            return out;
+          });
+
+          // el papel tiene un tamaño máximo: lo que se pase se recorta y se
+          // avisa, en vez de fabricar un mundo enorme sin querer
+          let recortado = false;
+          const anchoMax = Math.max(1, MAX_COL - startCol);
+          let rows = limpio.map((l) => {
+            if (l.length > anchoMax) {
+              recortado = true;
+              return l.slice(0, anchoMax);
+            }
+            return l;
+          });
+          const altoMax = Math.max(1, MAX_ROW - startRow);
+          if (rows.length > altoMax) {
+            rows = rows.slice(0, altoMax);
+            recortado = true;
+          }
+          const ultimo = rows[rows.length - 1];
+
+          if (calcar) {
+            for (let i = 0; i < rows.length; i++) {
+              const r = startRow + i;
+              if (r === 1) continue; // el blanco de abajo del título no se escribe
+              const base = edGetRow(r).padEnd(startCol + rows[i].length, " ");
+              const chars = base.split("");
+              for (let j = 0; j < rows[i].length; j++) {
+                const ch = rows[i][j];
+                if (ch === " ") continue; // por los huecos se ve lo de abajo
+                chars[startCol + j] = ch;
+              }
+              edSetRow(r, chars.join("").replace(/\s+$/, ""));
+            }
+            editor.row = Math.min(MAX_ROW, startRow + rows.length - 1);
+            editor.col = Math.min(MAX_COL, startCol + ultimo.length);
+          } else if (rows.length === 1) {
+            const line = edGetRow(startRow).padEnd(startCol, " ");
+            edSetRow(
+              startRow,
+              line.slice(0, startCol) + rows[0] + line.slice(startCol),
+            );
+            edShiftMarkers(startRow, startCol, rows[0].length);
+            editor.col = Math.min(MAX_COL, startCol + rows[0].length);
+          } else {
+            const line = edGetRow(startRow).padEnd(startCol, " ");
+            const head = line.slice(0, startCol);
+            const cola = line.slice(startCol); // lo que estaba a la derecha
+            const margen = " ".repeat(startCol);
+            edSetRow(startRow, head + rows[0]);
+            const nuevos = [];
+            for (let i = 1; i < rows.length; i++) {
+              nuevos.push(
+                margen + rows[i] + (i === rows.length - 1 ? cola : ""),
+              );
+            }
+            while (editor.lines.length < startRow - 1) editor.lines.push("");
+            editor.lines.splice(startRow - 1, 0, ...nuevos);
+            // lo que había más abajo baja tantos renglones como se pegaron
+            edShiftMarkerRows(startRow + 1, nuevos.length);
+            // y las marcas que estaban a la derecha del corte viajan con la
+            // cola, hasta el final del dibujo
+            for (const k of ["spawn", "prev", "next"]) {
+              const mk = editor.markers[k];
+              if (mk && mk.row === startRow && mk.col >= startCol) {
+                mk.col = mk.col - startCol + startCol + ultimo.length;
+                mk.row = startRow + rows.length - 1;
+              }
+            }
+            editor.row = Math.min(MAX_ROW, startRow + rows.length - 1);
+            editor.col = Math.min(MAX_COL, startCol + ultimo.length);
+          }
+
+          // las marcas que traía el texto, ya en coordenadas del nivel
+          let marcaNueva = false;
+          let marcaRepetida = false;
+          for (const m of marcas) {
+            if (m.row >= rows.length || m.col > rows[m.row].length) continue;
+            const row = startRow + m.row;
+            if (row === 1) continue;
+            if (editor.markers[m.kind]) {
+              marcaRepetida = true; // la que ya estaba puesta manda
+              continue;
+            }
+            editor.markers[m.kind] = {
+              row,
+              col: Math.min(MAX_COL, startCol + m.col),
+            };
+            marcaNueva = true;
+          }
+
+          editor.sel = null;
+          editorSyncPage();
+          camY = caretWorldY() + LINE_H / 2 - viewH / 2;
+          editorRefreshUI();
+          const n = rows.length;
+          let aviso =
+            (calcar ? "calcado" : "pegado") +
+            ": " +
+            n +
+            (n === 1 ? " renglón" : " renglones");
+          if (recortado) aviso += " (recortado, no entraba en el papel)";
+          if (marcaNueva) aviso += " · traía marcas puestas";
+          else if (marcaRepetida) aviso += " · le saqué marcas repetidas";
+          editorFlash(aviso + " · ctrl+z lo deshace");
+        }
+
+        // ---------- El portapapeles ----------
+        // Copiar y pegar sin pedir permisos raros solo funciona seguro
+        // adentro de un evento del navegador: por eso lo de ctrl+c/ctrl+v se
+        // resuelve en los eventos "copy"/"cut"/"paste" (más abajo) y esta
+        // función queda para los botones de la barra, que sí tienen que
+        // escribir el portapapeles por su cuenta.
+        function editorClipboardWrite(text) {
+          const aLaVieja = () => {
+            try {
+              const caja = document.createElement("textarea");
+              caja.value = text;
+              caja.setAttribute("readonly", "");
+              caja.style.position = "fixed";
+              caja.style.left = "-9999px";
+              document.body.appendChild(caja);
+              caja.select();
+              const ok = document.execCommand("copy");
+              caja.remove();
+              return ok;
+            } catch (err) {
+              return false;
+            }
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(() => {
+              if (!aLaVieja()) editorFlash("el navegador no me dejó copiar");
+            });
+            return true;
+          }
+          if (!aLaVieja()) {
+            editorFlash("el navegador no me dejó copiar");
+            return false;
+          }
+          return true;
+        }
+
+        // Qué texto se copia: el pedazo elegido si hay uno, y si no, el nivel
+        // entero (para llevarlo a otro lado o mandárselo a alguien). Si es
+        // cortar, además lo saca. Devuelve null cuando no hay nada que hacer.
+        function editorCopyText(cortar) {
+          if (edHasSel()) {
+            const text = edSelText();
+            if (cortar) {
+              edSnapshot("cortar");
+              edSelDelete();
+              editorSyncPage();
+              editorFlash("cortado · ctrl+z lo devuelve");
+            } else {
+              editorFlash("copiado");
+            }
+            return text;
+          }
+          if (cortar) {
+            editorFlash("para cortar, elegí un pedazo: shift + flechas");
+            return null;
+          }
+          let text = editorRows(false).join("\n");
+          const t = editorRawRow(0);
+          if (t.trim()) text = t + "\n\n" + text;
+          if (!text.trim()) {
+            editorFlash("todavía no hay nada escrito");
+            return null;
+          }
+          editorFlash("nivel entero copiado");
+          return text;
+        }
+
+        function editorCopyButton() {
+          const text = editorCopyText(false);
+          if (text != null) editorClipboardWrite(text);
+        }
+
+        // El botón "pegar dibujo": primero prueba leer el portapapeles solo
+        // (funciona en la mayoría de las computadoras); si el navegador no
+        // deja —lo normal en celular—, abre la hoja para pegarlo a mano.
+        async function editorPasteFromClipboard(calcar) {
+          let text = "";
+          try {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+              text = await navigator.clipboard.readText();
+            }
+          } catch (err) {
+            text = "";
+          }
+          if (text && text.trim()) {
+            editorPasteLines(editorCleanPasted(text), calcar);
+            editorFocusProxy();
+            return;
+          }
+          editorOpenPastePanel();
+        }
+
+        // ---------- La hoja para pegar a mano ----------
+        function editorOpenPastePanel() {
+          if (!editorPastePanel) return;
+          editorClosePanels();
+          editorPastePanel.classList.remove("hidden");
+          const caja = document.getElementById("edPasteText");
+          if (caja) {
+            caja.value = "";
+            editorPasteSize();
+            setTimeout(() => caja.focus(), 0);
+          }
+        }
+        function editorPasteSize() {
+          const caja = document.getElementById("edPasteText");
+          const cartel = document.getElementById("edPasteSize");
+          if (!caja || !cartel) return;
+          const lines = editorCleanPasted(caja.value);
+          if (!lines.length) {
+            cartel.textContent = "pegá el dibujo acá arriba";
+            return;
+          }
+          const ancho = Math.max(...lines.map((l) => l.length));
+          cartel.textContent =
+            lines.length +
+            (lines.length === 1 ? " renglón" : " renglones") +
+            " × " +
+            ancho +
+            " caracteres de ancho";
+        }
+        function editorPasteFromPanel(calcar) {
+          const caja = document.getElementById("edPasteText");
+          const lines = editorCleanPasted(caja ? caja.value : "");
+          if (!lines.length) {
+            editorFlash("la hoja estaba vacía");
+            return;
+          }
+          editorClosePanels();
+          editorPasteLines(lines, calcar);
+          editorFocusProxy();
+        }
+
+        // ---------- ctrl+c / ctrl+x / ctrl+v ----------
+        // Se escuchan los eventos del navegador y no las teclas: el nivel se
+        // escribe sobre el canvas, no en un campo de texto, así que estos
+        // eventos llegan al documento entero. Hacerlo así es lo único que
+        // funciona igual en todos los navegadores y sin pedir permisos.
+        let pegarCalcando = false;
+        document.addEventListener("copy", (e) => {
+          if (!isWritingLevel() || editorPanelAbierto()) return;
+          const text = editorCopyText(false);
+          if (text == null) return;
+          e.preventDefault();
+          if (e.clipboardData) e.clipboardData.setData("text/plain", text);
+        });
+        document.addEventListener("cut", (e) => {
+          if (!isWritingLevel() || editorPanelAbierto()) return;
+          const text = editorCopyText(true);
+          if (text == null) return;
+          e.preventDefault();
+          if (e.clipboardData) e.clipboardData.setData("text/plain", text);
+        });
+        document.addEventListener("paste", (e) => {
+          if (!isWritingLevel() || editorPanelAbierto()) return;
+          const datos = e.clipboardData || window.clipboardData;
+          const text = datos ? datos.getData("text/plain") : "";
+          e.preventDefault();
+          if (typeProxy) typeProxy.value = PROXY_SEED;
+          if (!text) {
+            editorFlash("no había texto en el portapapeles");
+            return;
+          }
+          editorPasteLines(editorCleanPasted(text), pegarCalcando);
+          pegarCalcando = false;
+        });
 
         // ---------- Marcas: aparición y flechas ----------
         // En el archivo, cada marca ocupa 3 caracteres ("(^)", "(<)", "(*)"),
@@ -2978,12 +3630,15 @@
           camY = caretWorldY() + LINE_H / 2 - viewH / 2;
           editorRefreshUI();
           editorFocusProxy();
-          editorFlash("escribí el nivel · ▶ probar para jugarlo");
+          editorFlash(
+            "escribí el nivel · ctrl+v pega un dibujo · ▶ probar para jugarlo",
+          );
         }
 
         function editorClose() {
           editor.active = false;
           editor.playing = false;
+          editor.sel = null;
           editorSource = null;
           if (editorBanner) editorBanner.classList.add("hidden");
           if (editorBar) editorBar.classList.add("hidden");
@@ -3003,6 +3658,7 @@
         // ---------- Probar el nivel adentro del editor ----------
         function editorStartTest() {
           if (!editor.active || editor.playing) return;
+          editor.sel = null;
           editorSyncPage();
           editor.playing = true;
           deaths = 0;
@@ -3135,6 +3791,38 @@
             editorOpenSendPanel();
             return true;
           }
+          // ctrl+v: el texto no llega por la tecla sino por el evento "paste"
+          // del navegador. Acá solo se anota si venía con shift, que es la
+          // manera de pedir "calcar encima" en vez de "empujar hacia abajo".
+          if (mod && (e.key === "v" || e.key === "V")) {
+            pegarCalcando = e.shiftKey;
+            return true;
+          }
+          // ctrl+c y ctrl+x tampoco se atajan acá: los resuelven los eventos
+          // "copy" y "cut", que son los únicos que pueden escribir el
+          // portapapeles sin pedirle permisos a nadie.
+          if (
+            mod &&
+            (e.key === "c" || e.key === "C" || e.key === "x" || e.key === "X")
+          ) {
+            return true;
+          }
+          if (mod && (e.key === "z" || e.key === "Z")) {
+            e.preventDefault();
+            if (e.shiftKey) editorRedo();
+            else editorUndo();
+            return true;
+          }
+          if (mod && (e.key === "y" || e.key === "Y")) {
+            e.preventDefault();
+            editorRedo();
+            return true;
+          }
+          if (mod && (e.key === "a" || e.key === "A")) {
+            e.preventDefault();
+            editorSelectAll();
+            return true;
+          }
           if (e.altKey && !mod) {
             const code = e.code;
             if (code === "KeyP") {
@@ -3168,31 +3856,38 @@
           switch (e.key) {
             case "Escape":
               e.preventDefault();
+              // con algo elegido, la primera vez solo se suelta el pedazo:
+              // salir del editor por accidente es peor
+              if (edHasSel()) {
+                editor.sel = null;
+                editorSyncPage();
+                return true;
+              }
               editorClose();
               return true;
             case "ArrowLeft":
               e.preventDefault();
-              editorMoveCaret(0, -1);
+              editorMoveCaret(0, -1, { select: e.shiftKey });
               return true;
             case "ArrowRight":
               e.preventDefault();
-              editorMoveCaret(0, 1);
+              editorMoveCaret(0, 1, { select: e.shiftKey });
               return true;
             case "ArrowUp":
               e.preventDefault();
-              editorMoveCaret(-1, 0);
+              editorMoveCaret(-1, 0, { select: e.shiftKey });
               return true;
             case "ArrowDown":
               e.preventDefault();
-              editorMoveCaret(1, 0);
+              editorMoveCaret(1, 0, { select: e.shiftKey });
               return true;
             case "Home":
               e.preventDefault();
-              editorMoveCaret(0, 0, { home: true });
+              editorMoveCaret(0, 0, { home: true, select: e.shiftKey });
               return true;
             case "End":
               e.preventDefault();
-              editorMoveCaret(0, 0, { end: true });
+              editorMoveCaret(0, 0, { end: true, select: e.shiftKey });
               return true;
             case "Enter":
               e.preventDefault();
@@ -3251,7 +3946,7 @@
         }
 
         // ---------- Mouse / dedo: llevar el cursor a donde se toca ----------
-        function editorPointToCaret(clientX, clientY) {
+        function editorPointToCaret(clientX, clientY, estirar) {
           const rect = canvas.getBoundingClientRect();
           const wx = (clientX - rect.left) / GAME_SCALE + camX;
           const wy = (clientY - rect.top) / GAME_SCALE + camY;
@@ -3264,11 +3959,34 @@
             MAX_COL,
             Math.max(0, Math.round((wx - COL_LEFT_START) / CHAR_W)),
           );
+          if (estirar) edClampSelZone();
+          else editor.sel = null;
           editorSyncPage();
         }
+        // Arrastrar con el mouse elige un pedazo; con shift apretado, el clic
+        // estira lo que ya estaba elegido.
+        let edArrastrando = false;
         canvas.addEventListener("mousedown", (e) => {
           if (!isWritingLevel()) return;
-          editorPointToCaret(e.clientX, e.clientY);
+          if (e.shiftKey) {
+            if (!editor.sel) editor.sel = { row: editor.row, col: editor.col };
+            editorPointToCaret(e.clientX, e.clientY, true);
+          } else {
+            editorPointToCaret(e.clientX, e.clientY);
+            editor.sel = { row: editor.row, col: editor.col };
+          }
+          edArrastrando = true;
+        });
+        window.addEventListener("mousemove", (e) => {
+          if (!edArrastrando) return;
+          if (!isWritingLevel()) {
+            edArrastrando = false;
+            return;
+          }
+          editorPointToCaret(e.clientX, e.clientY, true);
+        });
+        window.addEventListener("mouseup", () => {
+          edArrastrando = false;
         });
 
         // ---------- Barra de herramientas ----------
@@ -3315,6 +4033,18 @@
         edOn("edQuit", () => editorClose());
         edOn("edSave", () => editorDownload());
         edOn("edOpen", () => editorOpenPanel());
+        edOn("edCopy", () => editorCopyButton());
+        edOn("edPasteArt", () => editorPasteFromClipboard(false));
+        edOn("edPasteInsert", () => editorPasteFromPanel(false));
+        edOn("edPasteStamp", () => editorPasteFromPanel(true));
+        edOn("edPasteClose", () => editorClosePanels());
+        const edPasteBox = document.getElementById("edPasteText");
+        if (edPasteBox) {
+          edPasteBox.addEventListener("input", editorPasteSize);
+          edPasteBox.addEventListener("paste", () =>
+            setTimeout(editorPasteSize, 0),
+          );
+        }
         edOn("edFinal", () => {
           editor.isFinal = !editor.isFinal;
           editorRefreshUI();
@@ -3400,13 +4130,14 @@
         };
 
         function editorPanelAbierto() {
-          return [editorPanel, editorSendPanel].find(
+          return [editorPanel, editorSendPanel, editorPastePanel].find(
             (p) => p && !p.classList.contains("hidden"),
           );
         }
         function editorClosePanels() {
           if (editorPanel) editorPanel.classList.add("hidden");
           if (editorSendPanel) editorSendPanel.classList.add("hidden");
+          if (editorPastePanel) editorPastePanel.classList.add("hidden");
         }
 
         function editorNombreArchivo() {
@@ -3631,6 +4362,8 @@
           if (!editor.lines.length) editor.lines = [""];
           editor.row = 2;
           editor.col = 0;
+          editor.sel = null;
+          edForgetHistory(); // el deshacer no cruza de un nivel a otro
         }
 
         function editorLoadLevel(idx, number, isFinal) {
@@ -3659,6 +4392,8 @@
           editor.levelNumber = (window.LEVEL_COUNT || 0) + 1;
           editor.row = 2;
           editor.col = 0;
+          editor.sel = null;
+          edForgetHistory();
           editorSyncPage();
           camX = getTargetCamX();
           camY = caretWorldY() + LINE_H / 2 - viewH / 2;

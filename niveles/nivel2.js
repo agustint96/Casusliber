@@ -2,7 +2,7 @@
 window.LEVELS[1] = [
   "Sobre la naturaleza de la obra",
   "",
-  "Estructurada al rededor de un principio sencillo: ",
+  "Estru(^)cturada al rededor de un principio sencillo: ",
   "Una gota de tinta debe avanzar sobre la superficie escrita, ",
   "                                                           utilizando las l",
   "                                                                            e",
@@ -11,4 +11,4 @@ window.LEVELS[1] = [
   "                                                                                  a ",
   "                                                                                    s como sustento... ",
 ];
-window.LEVEL_TITLES[1] = "I. De Natura Operis";
+window.LEVEL_TITLES[1] = "(<)I. De Natura Operis";
