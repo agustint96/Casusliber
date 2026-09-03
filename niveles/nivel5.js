@@ -1,4 +1,4 @@
 // Nivel escrito con el modo edición de Casus Liber
 window.LEVELS[4] = [
-  "(*)         Otro le(^)travaladna  (<)",
+  "(*)         Otro le(^)travaladna        (<)  ",
 ];

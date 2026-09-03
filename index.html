@@ -167,13 +167,6 @@
         --paper: #1c1c1c;
         --ink: #ffffff;
       }
-      /* el globito de instrucciones tiene el fondo escrito a mano, así que hay
-         que darlo vuelta acá o queda letra blanca sobre fondo blanco */
-      body.nivel-invertido .mobile-tip {
-        background: rgba(28, 28, 28, 0.94);
-        border-color: rgba(255, 255, 255, 0.16);
-      }
-
       /* ---------- Fundido al terminar el último nivel ---------- */
       .fade-overlay {
         position: fixed;
@@ -200,8 +193,7 @@
         opacity: 0.68;
         transition: opacity 0.6s ease;
       }
-      .help-bubble.fade-out,
-      .mobile-tip.fade-out {
+      .help-bubble.fade-out {
         opacity: 0;
       }
       .help-text {
@@ -255,28 +247,6 @@
         background: linear-gradient(to bottom, #e6e6e6, #d4d4d4);
         box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
       }
-      .mobile-tip {
-        position: fixed;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 6;
-        bottom: max(28px, calc(env(safe-area-inset-bottom) + 8px));
-        background: rgba(255, 255, 255, 0.94);
-        border: 1px solid rgba(28, 28, 28, 0.16);
-        padding: 8px 16px;
-        border-radius: 16px;
-        font-family: var(--font-main);
-        font-size: 11px;
-        letter-spacing: 0.3px;
-        color: var(--ink);
-        text-align: center;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-        white-space: normal;
-        width: max-content;
-        max-width: min(88vw, 300px);
-        line-height: 1.5;
-        transition: opacity 0.6s ease;
-      }
       /* ================= MODO EDICIÓN (escribir un nivel adentro del juego) =================
          Misma paleta que el juego: papel blanco y tinta negra, nada de color.
          Como no hay rojo para marcar lo activo, la jerarquía se hace con lo
@@ -308,6 +278,25 @@
         font-size: 14px;
         color: var(--ink-faint);
         pointer-events: none;
+      }
+      /* El análisis del nivel: dos renglones fijos arriba a la izquierda,
+         del mismo gris que el resto de los avisos del editor. */
+      .editor-audit {
+        position: fixed;
+        top: calc(max(16px, env(safe-area-inset-top)) + 52px);
+        left: 14px;
+        z-index: 8;
+        max-width: 42ch;
+        font-family: var(--font-editor);
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--ink-faint);
+        pointer-events: none;
+        white-space: pre-line;
+      }
+      .editor-audit b {
+        font-weight: 400;
+        color: var(--ink);
       }
       .editor-flash {
         position: fixed;
@@ -582,9 +571,10 @@
       simulación · creador de niveles
     </div>
 
-    <div class="mobile-tip" id="mobileTip">
-      Deslizá el dedo hacia los costados para moverte y hacia arriba para saltar
-    </div>
+    <!-- Acá iba el cartel de instrucciones de celular. Se sacó entero (nodo,
+         estilos y el temporizador que lo desvanecía): en móvil el juego ya no
+         muestra ninguna ayuda automática. Si más adelante querés poner la
+         tuya, este es el lugar; no hay nada en el JS que la espere. -->
 
     <div class="help-bubble" id="helpBubble">
       <p class="help-text">Ad movendum, utere</p>
@@ -601,6 +591,9 @@
           <span class="keycap" data-key="d">D</span>
         </div>
       </div>
+      <p class="help-text" id="helpGrow" style="margin: 10px 0 0">
+        Ad crescendum, spatium
+      </p>
     </div>
 
     <!-- ---------- Modo edición ----------
@@ -612,6 +605,7 @@
     <div class="editor-banner hidden" id="editorBanner">modo edición</div>
     <div class="editor-caretinfo hidden" id="editorCaretInfo"></div>
     <div class="editor-flash" id="editorFlash"></div>
+    <div class="editor-audit hidden" id="editorAudit"></div>
 
     <div class="editor-bar hidden" id="editorBar">
       <button class="ed-btn primary" id="edPlay">
@@ -626,6 +620,12 @@
       </button>
       <button class="ed-btn writeonly" id="edNext">
         → flecha siguiente<small>alt+n</small>
+      </button>
+      <button class="ed-btn writeonly" id="edPunto">
+        · punto final<small>alt+.</small>
+      </button>
+      <button class="ed-btn writeonly" id="edDrop">
+        ◦ gota de tinta<small>alt+o</small>
       </button>
       <div class="ed-sep writeonly"></div>
       <button class="ed-btn writeonly" id="edGrow">
@@ -651,6 +651,16 @@
           value="1"
           autocomplete="off"
       /></span>
+      <span class="ed-field writeonly" id="edInkField"
+        >tinta
+        <input
+          id="edInk"
+          type="text"
+          inputmode="numeric"
+          value="100"
+          autocomplete="off"
+        />%</span
+      >
       <button class="ed-btn writeonly" id="edFinal">final</button>
       <button class="ed-btn writeonly" id="edOpen">
         abrir<small>ctrl+o</small>
@@ -790,6 +800,11 @@
       // colores" en el editor. Sin esto, hoja blanca y tinta negra como
       // siempre.
       window.LEVEL_INVERTED = [];
+      // Con cuánta tinta arranca el personaje en cada nivel: lo llena
+      // nivelN.js con window.LEVEL_INK[N-1] = 0.4 (una fracción del tanque
+      // lleno) si el creador eligió otro valor en el editor. Sin esto, el
+      // nivel arranca con el tanque lleno, como siempre.
+      window.LEVEL_INK = [];
       window.LEVEL_COUNT = 18; // <- cambiá este número al agregar/quitar niveles numerados
 
       // ---------- Modo simulación (usado por el Creador de niveles) ----------
@@ -834,6 +849,7 @@
           window.LEVEL_TITLES = [data.title || ""];
           window.LEVEL_GROWS_UP = [!!data.growsUp];
           window.LEVEL_INVERTED = [!!data.inverted];
+          window.LEVEL_INK = [typeof data.ink === "number" ? data.ink : 1];
           window.PREVIEW_IS_LEVEL_ONE = !!data.isLevelOne;
         }
         window.LEVEL_COUNT = window.LEVELS.length;
@@ -855,7 +871,6 @@
       (() => {
         const canvas = document.getElementById("game");
         const ctx = canvas.getContext("2d");
-        const mobileTip = document.getElementById("mobileTip");
         const helpBubble = document.getElementById("helpBubble");
         let W = window.innerWidth,
           H = window.innerHeight;
@@ -893,6 +908,19 @@
         const isTouchDevice =
           window.matchMedia("(pointer: coarse)").matches ||
           "ontouchstart" in window;
+        // ¿Esto es un celular o una tablet? "pointer: coarse" es el dedo;
+        // "any-pointer: fine" delata que además hay mouse o trackpad, o sea
+        // una notebook con pantalla táctil, que sigue siendo escritorio. Se
+        // pregunta cada vez en vez de guardarlo: girar el teléfono o
+        // enchufarle un teclado cambia la respuesta. Ojo con la tentación de
+        // resolverlo por ancho: un celular apaisado pasa los 700px del
+        // breakpoint y quedaría contado como PC.
+        function esMovil() {
+          return (
+            window.matchMedia("(pointer: coarse)").matches &&
+            !window.matchMedia("(any-pointer: fine)").matches
+          );
+        }
 
         if (helpBubble) {
           if (isTouchDevice) {
@@ -926,15 +954,9 @@
         window.addEventListener("resize", resizeCanvas);
         window.addEventListener("orientationchange", resizeCanvas);
 
-        // en celular, el globito de instrucciones (deslizar para moverse)
-        // se muestra un momento y se desvanece solo; en desktop no aplica
-        if (mobileTip) {
-          if (isTouchDevice) {
-            setTimeout(() => mobileTip.classList.add("fade-out"), 2000);
-          } else {
-            mobileTip.classList.add("hidden");
-          }
-        }
+        // (en celular no se muestra ningún cartel de instrucciones: el
+        // globito de teclas de arriba ya queda oculto en táctil, y el aviso
+        // de "deslizá el dedo" se sacó por completo)
 
         // ---------- Texto fuente tomado del PDF de Casus Liber ----------
         // Cada elemento de LEVELS es un nivel (capítulo) completo: un array de
@@ -1000,6 +1022,48 @@
           node.play().catch(() => {}); // si falta el archivo o el navegador bloquea autoplay, no rompe el juego
         }
 
+        /* ---------- Sonido: según la figura del punto final ----------
+           Suena UN archivo por recolección, tal cual está grabado: sin
+           retardos y sin tocarle la velocidad. Los tiempos son los del wav.
+
+             ♩  negra         sol.wav
+             ♪  corchea       corchea.wav
+             ♫  dos corcheas  corchea2.wav
+             ♬  semicorcheas  una de las tres, al azar
+
+           Las tres primeras tienen un solo archivo, así que siempre suenan
+           igual. Las semicorcheas tienen tres y elige una cada vez, para
+           que la figura que más se repite no suene siempre idéntica. */
+        const BAJOS_FILES = {
+          negra: ["sol.wav"],
+          corchea: ["corchea.wav"],
+          corcheas: ["corchea2.wav"],
+          semicorcheas: [
+            "semicorchea.wav",
+            "semicorchea2.wav",
+            "semicorchea3.wav",
+          ],
+        };
+
+        const bajoBuffers = {};
+        for (const [tipo, files] of Object.entries(BAJOS_FILES)) {
+          bajoBuffers[tipo] = files.map((file) => {
+            const a = new Audio(`notas/bajos/${file}`);
+            a.preload = "auto";
+            return a;
+          });
+        }
+
+        function playPianoPunto(tipo = "negra") {
+          const pool = bajoBuffers[tipo] || bajoBuffers.negra;
+          if (!pool.length) return;
+
+          const base = pool[Math.floor(Math.random() * pool.length)];
+          const node = base.cloneNode();
+          node.volume = 0.48;
+          node.play().catch(() => {});
+        }
+
         // los niveles van en bucle: al llegar al final del último, se
         // vuelve a empezar desde el nivel 1 (en vez de repetir el
         // último para siempre)
@@ -1045,7 +1109,11 @@
           // ancla del pedazo elegido (la otra punta es siempre el cursor);
           // null = no hay nada elegido
           sel: null,
-          markers: { spawn: null, prev: null, next: null },
+          markers: { spawn: null, prev: null, next: null, punto: null },
+          // Las gotas de tinta son la única marca que puede repetirse: van
+          // en lista, no en un casillero único como las otras tres.
+          drops: [],
+          ink: 1, // con cuánta carga arranca el nivel (0..1)
           levelNumber: 1,
           isFinal: false,
         };
@@ -1088,7 +1156,9 @@
           const titleClean = (getLevelTitle(levelIdx) || "")
             .replace(/\(\*\)/g, "")
             .replace(/\(\^\)/g, "")
-            .replace(/\(<\)/g, "");
+            .replace(/\(<\)/g, "")
+            .replace(/\(o\)/g, "")
+            .replace(/\(\.\)/g, "");
           const lines = [titleClean, ""];
           for (let i = 0; i < blocks.length; i++) {
             const raw = blocks[i] || "";
@@ -1099,7 +1169,9 @@
               raw
                 .replace(/\(\*\)/g, "")
                 .replace(/\(\^\)/g, "")
-                .replace(/\(<\)/g, ""),
+                .replace(/\(<\)/g, "")
+                .replace(/\(o\)/g, "")
+                .replace(/\(\.\)/g, ""),
             );
           }
           return lines;
@@ -1113,19 +1185,63 @@
         // arranca "(*)" en el texto crudo) — eso es exactamente la columna
         // donde tiene que quedar pegada la flecha, justo a la derecha del
         // carácter anterior. Devuelve null si el nivel no tiene marcador.
-        function getNavMarkerPos(levelIdx) {
-          // El título (renglón 0) también puede llevar la marca: se
-          // revisa primero, y si no está ahí se busca en el contenido
-          // como siempre.
-          const titleIdx = (getLevelTitle(levelIdx) || "").indexOf("(*)");
-          if (titleIdx !== -1) return { row: 0, col: titleIdx };
+        // Todas las marcas ocupan 3 caracteres en el archivo y se sacan del
+        // texto antes de dibujarlo, así que para saber en qué columna cae una
+        // marca hay que caminar el renglón contando SOLO los caracteres que
+        // van a quedar escritos. Con esto, poner una gota antes de la flecha
+        // no le corre la flecha de lugar.
+        const INK_DROP_TAG = "(o)";
+        // La marca del punto final: lo que hay que ir a buscar para que se
+        // abra la flecha de salida. Es una sola por nivel —como la aparición
+        // y las flechas— así que se lee con firstMarkPos() y no en lista.
+        const PUNTO_TAG = "(.)";
+        const ALL_TAGS = ["(^)", "(<)", "(*)", INK_DROP_TAG, PUNTO_TAG];
+        function scanMarkCols(raw, tag) {
+          const out = [];
+          let col = 0;
+          for (let i = 0; i < raw.length; ) {
+            const t = raw.substr(i, 3);
+            if (ALL_TAGS.includes(t)) {
+              if (t === tag) out.push(col);
+              i += 3;
+              continue;
+            }
+            col++;
+            i++;
+          }
+          return out;
+        }
+        // La primera marca de ese tipo en todo el nivel (el título primero).
+        function firstMarkPos(levelIdx, tag) {
+          const t = scanMarkCols(getLevelTitle(levelIdx) || "", tag);
+          if (t.length) return { row: 0, col: t[0] };
           const blocks = getLevelLines(levelIdx);
           for (let i = 0; i < blocks.length; i++) {
-            const raw = blocks[i] || "";
-            const idx = raw.indexOf("(*)");
-            if (idx !== -1) return { row: i + 2, col: idx };
+            const c = scanMarkCols(blocks[i] || "", tag);
+            if (c.length) return { row: i + 2, col: c[0] };
           }
           return null;
+        }
+        // Las gotas son la única marca que puede repetirse: van todas.
+        function getInkDropMarks(levelIdx) {
+          const out = [];
+          for (const c of scanMarkCols(
+            getLevelTitle(levelIdx) || "",
+            INK_DROP_TAG,
+          )) {
+            out.push({ row: 0, col: c });
+          }
+          const blocks = getLevelLines(levelIdx);
+          for (let i = 0; i < blocks.length; i++) {
+            for (const c of scanMarkCols(blocks[i] || "", INK_DROP_TAG)) {
+              out.push({ row: i + 2, col: c });
+            }
+          }
+          return out;
+        }
+
+        function getNavMarkerPos(levelIdx) {
+          return firstMarkPos(levelIdx, "(*)");
         }
 
         // Igual que getNavMarkerPos, pero para "(^)": el marcador que dice
@@ -1133,30 +1249,21 @@
         // devuelve null y se usa el default (primer renglón, borde
         // izquierdo).
         function getSpawnMarkerPos(levelIdx) {
-          const titleIdx = (getLevelTitle(levelIdx) || "").indexOf("(^)");
-          if (titleIdx !== -1) return { row: 0, col: titleIdx };
-          const blocks = getLevelLines(levelIdx);
-          for (let i = 0; i < blocks.length; i++) {
-            const raw = blocks[i] || "";
-            const idx = raw.indexOf("(^)");
-            if (idx !== -1) return { row: i + 2, col: idx };
-          }
-          return null;
+          return firstMarkPos(levelIdx, "(^)");
         }
 
         // Igual que getNavMarkerPos, pero para "(<)": el marcador que dice
         // dónde va la flecha "anterior". Si no está, devuelve null y se usa
         // el default (misma fila/columna que la aparición del personaje).
         function getPrevMarkerPos(levelIdx) {
-          const titleIdx = (getLevelTitle(levelIdx) || "").indexOf("(<)");
-          if (titleIdx !== -1) return { row: 0, col: titleIdx };
-          const blocks = getLevelLines(levelIdx);
-          for (let i = 0; i < blocks.length; i++) {
-            const raw = blocks[i] || "";
-            const idx = raw.indexOf("(<)");
-            if (idx !== -1) return { row: i + 2, col: idx };
-          }
-          return null;
+          return firstMarkPos(levelIdx, "(<)");
+        }
+
+        // Y para "(.)": dónde dejó el autor el punto final de este nivel. Si
+        // no está, devuelve null y el nivel no tiene nada que recolectar (la
+        // flecha de salida queda abierta desde el arranque).
+        function getPuntoMarkerPos(levelIdx) {
+          return firstMarkPos(levelIdx, PUNTO_TAG);
         }
 
         // ¿Este nivel crece hacia arriba? (el renglón 0 del array queda
@@ -1178,6 +1285,19 @@
           }
           const flags = window.LEVEL_INVERTED || [];
           return !!flags[levelIdx];
+        }
+
+        // Con cuánta tinta arranca este nivel (1 = tanque lleno). Es lo que
+        // vuelve la carga algo que se diseña: un nivel puede empezar casi
+        // seco y obligar a recolectar para llegar a la flecha de salida.
+        function getLevelStartInk(levelIdx) {
+          const v =
+            levelIdx === EDITOR_PAGE
+              ? editorSource
+                ? editorSource.ink
+                : 1
+              : (window.LEVEL_INK || [])[levelIdx];
+          return typeof v === "number" ? Math.max(0.05, Math.min(1, v)) : 1;
         }
 
         // Y en qué pantalla cae el renglón "r" de una página ya construida.
@@ -1296,6 +1416,29 @@
           // renglón 0 del array (el del título), pegado al borde
           // izquierdo — que con "growsUp" tildado ya cae abajo de la
           // pantalla, no arriba, gracias a rowY().
+          // Las gotas de tinta del nivel, ya en coordenadas de la hoja. Cada
+          // una recuerda si la levantaron en esta vida (se reponen al morir).
+          const drops = getInkDropMarks(getLevelIndex(pageIdx)).map((m) => ({
+            x: COL_LEFT_START + m.col * CHAR_W + CHAR_W / 2,
+            y: rowY(m.row) - 1,
+            taken: false,
+          }));
+          // El punto final: uno solo, en la fila y la columna donde quedó
+          // la marca "(.)". Es lo único que hay que recolectar, y hasta que
+          // no se levanta la flecha de salida no funciona. Sin marca no hay
+          // punto y la flecha queda abierta desde el arranque: así los
+          // niveles que ya estaban escritos se siguen jugando igual que
+          // siempre y se les va poniendo el punto de a uno.
+          const puntoPos = getPuntoMarkerPos(getLevelIndex(pageIdx));
+          const punto = puntoPos
+            ? {
+                x: COL_LEFT_START + puntoPos.col * CHAR_W + CHAR_W / 2,
+                y: rowY(puntoPos.row) - 1,
+                taken: false,
+              }
+            : null;
+          const startInk = getLevelStartInk(getLevelIndex(pageIdx));
+
           const spawnMarkerPos = getSpawnMarkerPos(getLevelIndex(pageIdx));
           const spawnRowIndex =
             spawnMarkerPos !== null ? spawnMarkerPos.row : 0;
@@ -1388,6 +1531,9 @@
             inverted,
             startX,
             startY,
+            drops,
+            punto,
+            startInk,
           };
         }
 
@@ -1627,7 +1773,22 @@
           player.facing = 1;
           dying = false;
           deathFrames = 0;
-          playerInk = 1; // lapicera recargada
+          playerInk = LA_TINTA_SE_GASTA ? page.startInk : 1;
+          growT = 0;
+          player.w = BODY_BASE;
+          player.h = BODY_BASE;
+          applyPlayerSize();
+          if (page.drops) for (const d of page.drops) d.taken = false;
+          // el punto vuelve a su lugar: morir es empezar el renglón de nuevo,
+          // no seguir con lo que ya se había juntado
+          if (page.punto) page.punto.taken = false;
+          // idem con las notas que hubieran quedado flotando de la vida
+          // anterior: reaparecer es empezar de cero, no arrastrar efectos
+          floatingNotes = [];
+          // y la flecha vuelve a estar apagada de una, sin desvanecerse: acá
+          // el jugador está reapareciendo o entrando a un capítulo nuevo, y
+          // verla apagarse sola sería anunciar algo que todavía no hizo
+          salidaFade = page.punto ? 0 : 1;
           inkDistance = 0;
           lastLandedWordId = null;
           trail = [];
@@ -1649,9 +1810,35 @@
         // los chicos ~700 px, el 15 (el más grande) ~2000 px. O sea que con
         // 8000 se puede dar unas cuantas vueltas antes de quedarse seco.
         const INK_RANGE = 8000;
-        // Gasto por cuadro aunque no se mueva. En 0 quedarse quieto es gratis;
-        // subilo (0.0005 ≈ un tanque en 33 s parado) para meter apuro.
-        const INK_TIME_DRAIN = 0;
+        // ---------- Secarse ----------
+        // La tinta no se gasta solamente caminando: también se seca sola.
+        // Quieto sobre la hoja el personaje igual se va yendo, y esa es la
+        // presión que empuja a seguir en vez de quedarse mirando. Acá va
+        // cuánto tarda en evaporarse la carga CON LA QUE ARRANCÓ EL NIVEL,
+        // quieto y sin agrandarse. En 0 no se seca nunca y el juego vuelve a
+        // ser el de antes, con el gasto atado solo al recorrido.
+        //
+        // Que sea relativo a la carga inicial y no un goteo fijo importa: el
+        // nivel 18 arranca con 30% de tinta a propósito, y con un goteo fijo
+        // esos 30% se le evaporaban en un tercio del tiempo que a los demás,
+        // o sea que el nivel más apretado del juego además se volvía el que
+        // menos reloj tenía. Así, todos los niveles dan los mismos segundos
+        // de secado y lo que cambia entre ellos sigue siendo el recorrido.
+        const SECADO_SEGUNDOS = 150;
+        // El secado se pensó para escritorio. En celular la partida es más
+        // corta y el control más grueso, así que ahí queda apagado; poné esto
+        // en false y se seca en todos lados por igual.
+        const SECADO_SOLO_EN_PC = true;
+        const SECADO_POR_CUADRO =
+          SECADO_SEGUNDOS > 0 ? 1 / (SECADO_SEGUNDOS * 60) : 0;
+        // Cuánto alivia el secado estar agrandado: una mancha con más cuerpo
+        // tarda más en evaporarse. Con 0.85, inflado del todo se seca casi a
+        // la mitad de velocidad. Es una de las dos cosas que compra la
+        // reserva; la otra es el tamaño de la colisión.
+        const SECADO_ALIVIO = 0.85;
+        function seSeca() {
+          return SECADO_POR_CUADRO > 0 && !(SECADO_SOLO_EN_PC && esMovil());
+        }
         const PEN_WIDTH = 1.7; // grosor del trazo
         const PEN_ALPHA = 0.9;
         const INK_POINT_EVERY = 2.5; // px entre punto y punto del trazo
@@ -1666,7 +1853,145 @@
         // que se lee limpio en vez de dejar ese reguero difuso atrás.
         // Poniéndolo en true vuelve tal cual estaba, con TRAIL_FADE mandando.
         const TRAIL_ON = false;
-        let playerInk = 1; // 1 = tanque lleno, 0 = se borró
+        // ---------- La tinta no se gasta ----------
+        // Regla del juego, y la que manda sobre todo lo que viene abajo: la
+        // gota es siempre la misma gota. No se consume caminando, no se seca
+        // sola y no cambia de tamaño nunca. Por eso el espacio también dejó
+        // de agrandar al personaje: no hay reserva que abrir ni nada que
+        // administrar. La dificultad se mudó al punto final, que hay que ir
+        // a buscar para que se abra la flecha de salida.
+        //
+        // El sistema viejo no se borró: quedó entero colgando de este
+        // interruptor. En true vuelve tal cual estaba —el cuerpo achicándose
+        // con la carga, el secado, la reserva, el espacio para inflarse y
+        // perder por quedarse seco.
+        const LA_TINTA_SE_GASTA = false;
+
+        // ---------- El tamaño ES la tinta ----------
+        // El personaje no tiene barra de vida: tiene un cuerpo que se achica
+        // a medida que se gasta y se vuelve a agrandar con cada gota que
+        // levanta. Con el tanque lleno mide exactamente lo que midió siempre
+        // (9 px), así que los niveles ya escritos se juegan igual que antes.
+        const BODY_BASE = 9;
+        const SIZE_MIN = 0.5; // tamaño con el tanque casi seco
+        // ---------- Gotas para levantar del piso: apagadas ----------
+        // El personaje ya no recarga juntando cosas tiradas por el nivel. La
+        // única carga extra es la reserva que trae encima (más abajo). No se
+        // borró el código: las marcas (o) que ya estén escritas en los
+        // niveles viejos siguen leyéndose, simplemente no se dibujan ni hacen
+        // nada, así que ningún nivel se rompe. En true vuelve todo como era.
+        const GOTAS_DE_TINTA = false;
+        const DROP_INK = 0.22; // cuánto tanque devuelve una gota
+        const DROP_R = 5.5; // radio para levantarla
+        // El celeste de las gotas: tinta de otro frasco, la que le devuelve
+        // cuerpo al personaje. Tres tonos para el mismo degradado húmedo.
+        const INK_DROP_TINT = ["#9ecfe8", "#5b9dc4", "#2f6f96"];
+        // ---------- El tanque de reserva ----------
+        // No hay gotas tiradas por el nivel: hay UNA carga extra, la que el
+        // personaje trae encima, y dura toda la partida. No se recupera
+        // muriendo ni pasando de capítulo, así que gastarla es una decisión y
+        // no un trámite. Es lo único que se consume al agrandarse.
+        const RESERVA_LLENA = 1; // 1 = un tanque entero de más
+        // Cuántos segundos de inflado del todo da esa carga, sumando TODA la
+        // partida (son 19 capítulos, así que 45 son poco más de dos segundos
+        // por nivel si se reparte parejo). Este es EL número para tocar si la
+        // reserva se siente regalada o miserable.
+        const RESERVA_SEGUNDOS = 45;
+        const RESERVA_POR_CUADRO = RESERVA_LLENA / (RESERVA_SEGUNDOS * 60);
+        // ¿Se vuelve a llenar al entrar a un capítulo nuevo? false = una sola
+        // carga para toda la partida, que es lo pedido. Si algún nivel se
+        // vuelve imposible por haber llegado sin reserva, poné true y se
+        // recarga en cada capítulo: es la salida de emergencia.
+        const RESERVA_POR_NIVEL = false;
+        // Dibujar el cartucho de reserva abajo a la izquierda. En false no se
+        // dibuja nada y la reserva se juega a ciegas.
+        const MOSTRAR_RESERVA = true;
+        // A propósito FUERA de resetPlayerToPageStart(): morir no la devuelve.
+        let reserva = RESERVA_LLENA;
+
+        // Agrandarse (espacio, o un segundo dedo): se abre la reserva y el
+        // cuerpo se infla. Mientras está inflado ocupa más lugar de verdad
+        // —la caja de colisión crece con él— y se seca más despacio.
+        const GROW_EXTRA = 0.85; // inflado del todo mide 1,85 veces
+        const GROW_RATE = 0.07; // qué rápido se infla
+        const GROW_RELAX = 0.12; // qué rápido se desinfla al soltar
+        let growT = 0; // 0 = tamaño natural, 1 = agrandado del todo
+        // Con el gasto apagado arranca (y se queda) en 1: si tomara la
+        // carga del nivel, un nivel escrito para empezar al 30% dejaría al
+        // personaje pálido para siempre, sin manera de recuperarse.
+        let playerInk = LA_TINTA_SE_GASTA ? page.startInk : 1;
+
+        // El tamaño para una inflada dada. La base la pone la tinta que
+        // queda —por eso el personaje se va achicando solo mientras se
+        // gasta— y encima se suma lo que se infló con la reserva.
+        function inkScale(t) {
+          // Sin gasto no hay nada que achique ni agrande el cuerpo: el tamaño
+          // es fijo y todo el juego se mide contra los mismos 9 px de
+          // siempre. (De paso reachFactor() da exactamente 1, o sea el salto
+          // original, sin tener que tocarlo.)
+          if (!LA_TINTA_SE_GASTA) return 1;
+          const inflado = t === undefined ? growT : t;
+          return (
+            (SIZE_MIN + (1 - SIZE_MIN) * playerInk) * (1 + GROW_EXTRA * inflado)
+          );
+        }
+        function bodySize(t) {
+          return BODY_BASE * inkScale(t);
+        }
+        // ¿Entra un cuerpo de este lado donde está parado? Se mide desde los
+        // pies y desde el medio: inflarse levanta la cabeza y ensancha los
+        // costados, y contra una letra eso no puede pasar. Por eso quedarse
+        // chico es lo que te deja pasar por los huecos angostos.
+        function playerFits(lado) {
+          const cx = player.x + player.w / 2;
+          const bottom = player.y + player.h;
+          const box = { x: cx - lado / 2, y: bottom - lado, w: lado, h: lado };
+          for (const p of page.platforms) {
+            if (aabbOverlap(box, p)) return false;
+          }
+          return true;
+        }
+        // El mayor inflado, hasta el pedido, que entra donde está parado.
+        // Antes esto era todo o nada: si el cuerpo agrandado rozaba una sola
+        // letra se revertía entero, así que apretar espacio no hacía
+        // absolutamente nada —ni de dibujo ni de colisión— justo en la
+        // situación más común, que es estar parado entre letras. Ahora crece
+        // lo que el hueco le permita: contra el techo se infla un poco y se
+        // nota, en campo abierto se infla del todo.
+        function growTQueEntra(pedido) {
+          if (pedido <= growT) return pedido; // achicarse siempre entra
+          if (playerFits(bodySize(pedido))) return pedido;
+          const PASOS = 6;
+          for (let i = PASOS - 1; i > 0; i--) {
+            const t = growT + ((pedido - growT) * i) / PASOS;
+            if (playerFits(bodySize(t))) return t;
+          }
+          return growT;
+        }
+        // Escribe el tamaño en el cuerpo de verdad: player.w y player.h son
+        // los que lee la física, así que inflarse ES una caja de colisión más
+        // grande y no un efecto de dibujo. Se ancla en los pies y en el medio
+        // para no hundirlo en la letra sobre la que está parado.
+        function applyPlayerSize() {
+          const lado = bodySize();
+          const cx = player.x + player.w / 2;
+          const bottom = player.y + player.h;
+          player.x = cx - lado / 2;
+          player.y = bottom - lado;
+          player.w = lado;
+          player.h = lado;
+        }
+        // Cuanto más grande, un poco más lejos llega: el mismo empujón mueve
+        // más lejos a una mancha más grande. Es suave a propósito, y con el
+        // tanque lleno y sin agrandarse da exactamente el salto de siempre.
+        function reachFactor() {
+          return Math.max(0.88, Math.min(1.22, 0.9 + 0.1 * inkScale()));
+        }
+        // En celular no hay barra espaciadora: agrandarse es apoyar un
+        // segundo dedo, mientras el primero sigue manejando el movimiento.
+        function touchGrowHeld() {
+          return touchStartX.size >= 2;
+        }
         let inkDistance = 0;
         let trail = []; // los puntos del trazo dibujado en esta vida
         let trailIdleFrames = 0;
@@ -1698,6 +2023,9 @@
           }
           pageIndex = idx;
           pageNum = idx + 1;
+          // por defecto la reserva NO se recarga al cambiar de capítulo: es
+          // una sola para toda la partida (ver RESERVA_POR_NIVEL)
+          if (RESERVA_POR_NIVEL) reserva = RESERVA_LLENA;
           if (hudPage) hudPage.textContent = pageNum;
           resetPlayerToPageStart();
           camX = getTargetCamX();
@@ -1796,11 +2124,20 @@
           // querés también ahí
           if (!isNarrowScreen) return;
           if (editor.active) return;
-          // el centro exacto de la flecha de salida, la misma cuenta que hace
-          // getNavBoxes() para dibujarla
-          introCentroX =
-            page.navRowLastCharEndX + NAV_GAP_RIGHT + NAV_BOX_W / 2;
-          introCentroY = page.rightNavRowY;
+          // Qué se le muestra al que se quedó quieto: lo que le falta. Si
+          // todavía no levantó el punto final, la cámara va hasta el punto,
+          // porque la flecha sin él no le sirve de nada; ya levantado (o en
+          // un nivel sin punto) va hasta la flecha, como siempre.
+          if (page.punto && !page.punto.taken) {
+            introCentroX = page.punto.x;
+            introCentroY = page.punto.y;
+          } else {
+            // el centro exacto de la flecha de salida, la misma cuenta que
+            // hace getNavBoxes() para dibujarla
+            introCentroX =
+              page.navRowLastCharEndX + NAV_GAP_RIGHT + NAV_BOX_W / 2;
+            introCentroY = page.rightNavRowY;
+          }
           // cuánto se mueve la cámara: de donde la deja el juego al arrancar,
           // hasta tener la flecha en el medio de la pantalla
           const viaje = Math.hypot(
@@ -1918,6 +2255,29 @@
           };
         }
 
+        // ---------- ¿Está abierta la salida? ----------
+        // La flecha de siguiente no anda hasta que el personaje levantó el
+        // punto final del nivel. Mientras tanto se dibuja apagada, igual que
+        // la flecha de volver en el primer capítulo: se ve que está, se ve
+        // que todavía no. Los niveles sin marca "(.)" no tienen punto y la
+        // salida les queda abierta de entrada.
+        function salidaAbierta() {
+          return !page.punto || page.punto.taken;
+        }
+
+        // ---------- Cómo se enciende ----------
+        // Abierta o cerrada es un sí o un no, pero la flecha no puede
+        // aparecer de un cuadro al otro: eso se lee como un error de dibujo,
+        // no como algo que pasó. Así que el dibujo no sigue al booleano sino
+        // a este número, que lo persigue de a poco. La flecha se va
+        // entintando, como si alguien terminara de escribirla.
+        //
+        // Es SOLO dibujo: el choque contra la flecha sigue atado a
+        // salidaAbierta(), así que levantar el punto la habilita en el acto
+        // aunque todavía se la esté viendo aparecer.
+        const SALIDA_FADE_FRAMES = 45; // ~0,75 s a 60 fps
+        let salidaFade = salidaAbierta() ? 1 : 0;
+
         // calcula cómo golpeó el jugador la caja de navegación: su velocidad
         // en ese instante y en qué punto vertical/horizontal de la caja entró,
         // para que la animación de la flecha varíe según el impacto real
@@ -1940,6 +2300,10 @@
         const NAV_KNOCKBACK_VY = -4.5;
 
         function update() {
+          // las notas que quedaron flotando siguen su camino pase lo que
+          // pase (escribiendo un nivel, en el vistazo, muriendo, etc.), así
+          // que se actualizan antes de cualquier corte temprano de acá abajo
+          updateFloatingNotes();
           // escribiendo el nivel no hay personaje ni gravedad: lo único que
           // se mueve es la cámara siguiendo al cursor de escritura
           if (isWritingLevel()) {
@@ -1991,20 +2355,41 @@
             player.vx += 0.8 * (Math.abs(moveAxis) + 0.2);
             player.facing = 1;
           }
-          player.vx = Math.max(-MOVE_SPEED, Math.min(MOVE_SPEED, player.vx));
+          const topeVel = MOVE_SPEED * reachFactor();
+          player.vx = Math.max(-topeVel, Math.min(topeVel, player.vx));
           player.vx *= FRICTION;
 
-          // ¿está pedida la tecla de arriba en este momento?
+          // ¿está pedida la tecla de arriba en este momento? El espacio ya
+          // no salta: ahora es la tecla de agrandarse.
           const upHeld =
-            keys[" "] ||
-            keys["ArrowUp"] ||
-            keys["w"] ||
-            keys["W"] ||
-            touchUpHeld();
+            keys["ArrowUp"] || keys["w"] || keys["W"] || touchUpHeld();
+
+          // ---------- Agrandarse ----------
+          // Sosteniendo espacio (o un segundo dedo) se abre la reserva y el
+          // cuerpo se infla. Sirve para dos cosas, y son las dos maneras de
+          // gastarla: ocupar más lugar —la caja de colisión crece con el
+          // cuerpo, así que se alcanzan letras que de chico no se alcanzan— y
+          // aguantar más el secado, porque una mancha con más cuerpo tarda
+          // más en evaporarse. Al soltar vuelve al tamaño que le corresponde
+          // a la tinta que queda. Cuando la reserva se terminó, el espacio
+          // deja de hacer efecto por el resto de la partida.
+          const growHeld =
+            LA_TINTA_SE_GASTA &&
+            !dying &&
+            (keys[" "] || touchGrowHeld()) &&
+            reserva > 0;
+          const growPedido = growHeld
+            ? Math.min(1, growT + GROW_RATE)
+            : Math.max(0, growT - GROW_RELAX);
+          growT = growTQueEntra(growPedido);
+          applyPlayerSize();
+          if (growHeld && growT > 0) {
+            reserva = Math.max(0, reserva - RESERVA_POR_CUADRO * growT);
+          }
 
           if (touchJumpBuffer > 0) touchJumpBuffer--;
           if ((upHeld || touchJumpBuffer > 0) && player.onGround) {
-            player.vy = JUMP_VELOCITY;
+            player.vy = JUMP_VELOCITY * reachFactor();
             player.onGround = false;
             touchJumpBuffer = 0;
             jumpLatched = true; // esta pulsación ya se gastó saltando
@@ -2082,6 +2467,71 @@
             }
           }
 
+          // ---------- Levantar una gota de tinta ----------
+          // Apagado (GOTAS_DE_TINTA): el personaje ya no recarga levantando
+          // nada del piso. La única carga extra es la reserva que trae
+          // encima, y esa se gasta agrandándose, no juntando.
+          if (GOTAS_DE_TINTA && !dying) {
+            for (const d of page.drops) {
+              if (d.taken) continue;
+              const caja = {
+                x: d.x - DROP_R,
+                y: d.y - DROP_R,
+                w: DROP_R * 2,
+                h: DROP_R * 2,
+              };
+              if (aabbOverlap(player, caja)) {
+                d.taken = true;
+                playerInk = Math.min(1, playerInk + DROP_INK);
+                playNextNote();
+              }
+            }
+          }
+
+          // ---------- Levantar el punto final ----------
+          // Lo único que se recolecta en todo el juego. No devuelve tinta ni
+          // cambia el cuerpo: lo único que hace es abrir la flecha de salida,
+          // que hasta ese momento no responde.
+          if (page.punto && !page.punto.taken && !dying && !transitioning) {
+            // Ya no es un rectángulo pegado a un charquito: es una zona
+            // CIRCULAR (el mismo círculo punteado que se dibuja). Se
+            // levanta apenas el cuerpo del personaje toca el borde del
+            // círculo, así que "recolectarlo" es, en los hechos, pasar
+            // por adentro de esa zona.
+            const pcx = player.x + player.w / 2;
+            const pcy = player.y + player.h / 2;
+            const dx = pcx - page.punto.x;
+            const dy = pcy - page.punto.y;
+            const radioGolpe = PUNTO_RADIO + Math.max(player.w, player.h) / 2;
+            if (dx * dx + dy * dy <= radioGolpe * radioGolpe) {
+              page.punto.taken = true;
+              // el sonido depende de la figura: un archivo de los que tenga
+              // asignados (ver BAJOS_FILES)
+              playPianoPunto(hashFigura(page.punto.x, page.punto.y));
+              // se despega del renglón y queda flotando (ver
+              // spawnFloatingNote): la misma figura, yéndose de a poco, en
+              // vez de desaparecer de un cuadro al otro
+              spawnFloatingNote(
+                page.punto.x,
+                page.punto.y,
+                hashFigura(page.punto.x, page.punto.y),
+              );
+              // la ayuda de quedarse quieto se rearma: la primera vez señaló
+              // el punto, y ahora que ya está levantado tiene sentido que la
+              // segunda señale la flecha
+              introShown = false;
+              // la flecha puede estar lejos y fuera de pantalla, así que se
+              // avisa: si no, se abrió algo y nadie lo vio
+              if (hudMsg) {
+                hudMsg.textContent = "punto final · la salida se abrió";
+                setTimeout(() => {
+                  if (hudMsg.textContent === "punto final · la salida se abrió")
+                    hudMsg.textContent = "";
+                }, 1600);
+              }
+            }
+          }
+
           // ---------- El trazo de la lapicera ----------
           // Se guarda un punto cada tantos píxeles recorridos, no cada cuadro:
           // así el trazo tiene el mismo grosor y la misma densidad yendo rápido
@@ -2109,10 +2559,23 @@
                 }
               }
             }
-            // el gasto de tinta NO depende del rastro: se paga por moverse,
-            // se dibuje o no el trazo
-            playerInk -= avance / INK_RANGE + INK_TIME_DRAIN;
-            if (playerInk < 0) playerInk = 0;
+            // Acá se pagaba el recorrido y el secado. Con la regla nueva no
+            // se paga nada: la gota entra y sale del nivel igual de entera.
+            if (LA_TINTA_SE_GASTA) {
+              // el gasto de tinta NO depende del rastro: se paga por moverse,
+              // se dibuje o no el trazo
+              playerInk -= avance / INK_RANGE;
+              // ...y además se seca sola, con el reloj corriendo aunque el
+              // personaje esté quieto. Estar inflado la protege: más cuerpo,
+              // más tarda en evaporarse. Es la otra cosa que compra la
+              // reserva.
+              if (seSeca()) {
+                playerInk -=
+                  (SECADO_POR_CUADRO * page.startInk) /
+                  (1 + SECADO_ALIVIO * growT);
+              }
+              if (playerInk < 0) playerInk = 0;
+            }
           }
 
           if (TRAIL_ON) {
@@ -2168,7 +2631,7 @@
           };
           const boxes = getNavBoxes();
           if (navCooldown <= 0 && !transitioning) {
-            if (aabbOverlap(playerScreen, boxes.right)) {
+            if (aabbOverlap(playerScreen, boxes.right) && salidaAbierta()) {
               transitioning = true;
               playNextNavNote();
               navHitRight = HIT_ANIM_FRAMES;
@@ -2230,7 +2693,9 @@
           // Dos maneras: caerse de la hoja, o quedarse sin tinta. La segunda
           // no es un accidente del recorrido sino la consecuencia de haberlo
           // escrito: se te acabó la lapicera.
-          const seQuedoSinTinta = playerInk <= 0;
+          // Quedarse seco dejó de ser una manera de perder: con la tinta
+          // fija, la única es caerse de la hoja.
+          const seQuedoSinTinta = LA_TINTA_SE_GASTA && playerInk <= 0;
           if (
             !transitioning &&
             !dying &&
@@ -2344,6 +2809,46 @@
             ctx.fillRect(p.x, p.y + FONT_SIZE - 2, p.w, 2);
           }
 
+          // ---------- Las gotas de tinta ----------
+          // Apagadas: las marcas (o) que hayan quedado escritas en niveles
+          // viejos no se dibujan, así que esos niveles se ven limpios en vez
+          // de mostrar algo que ya no se puede levantar. Encendidas, sin
+          // levantar es la misma mancha del personaje, más chica; ya
+          // levantada, una aguada tenue marcando por dónde pasaste.
+          for (const d of GOTAS_DE_TINTA ? page.drops : []) {
+            if (d.taken) {
+              ctx.fillStyle = "rgba(122,178,214,0.16)";
+              ctx.beginPath();
+              ctx.ellipse(d.x, d.y + 1, 4, 1.6, 0, 0, Math.PI * 2);
+              ctx.fill();
+              continue;
+            }
+            // Una manchita celeste derramada sobre las letras: la misma
+            // mancha del personaje pero derretida, como cuando él se queda
+            // quieto y se desparrama. Nada de círculos flotando: es tinta
+            // que se cayó al piso y quedó ahí.
+            const gotaT = performance.now() * 0.002;
+            const respira = 0.9 + Math.sin(gotaT * 1.4 + d.x * 0.05) * 0.05;
+            drawInkBlob(d.x, d.y, {
+              alpha: 0.95,
+              scale: respira,
+              melt: 1,
+              tint: INK_DROP_TINT,
+            });
+          }
+
+          // ---------- El punto final ----------
+          // No es otro objeto: es la misma gota del personaje, aplastada y
+          // chorreando. Un charco sobre el renglón del que se descuelga un
+          // hilo de tinta que engorda, se corta y cae, y vuelve a empezar.
+          // Levantado no queda nada.
+          if (page.punto && !page.punto.taken) {
+            drawPuntoFinal(page.punto.x, page.punto.y);
+          }
+
+          // las notas que se acaban de levantar, yéndose flotando
+          drawFloatingNotes();
+
           // bandera de meta
 
           // Cuánta tinta le queda al personaje: 1 entero, 0 borrado del todo.
@@ -2381,7 +2886,7 @@
               vx: player.vx,
               vy: player.vy,
               alpha: (0.4 + 0.6 * playerInk) * inkLeft,
-              scale: 0.5 + 0.5 * playerInk,
+              scale: player.w / BODY_BASE,
             });
           }
 
@@ -2399,7 +2904,16 @@
             editor.active || pageIndex > 0,
             navImpactLeft,
           );
-          drawNavArrow(boxes.right, 1, navHitRight, true, navImpactRight);
+          drawNavArrow(boxes.right, 1, navHitRight, salidaFade, navImpactRight);
+
+          // ---------- El cartucho de reserva ----------
+          // Va acá, en coordenadas de pantalla y ANTES del negativo, para que
+          // en los niveles invertidos se dé vuelta solo como todo lo demás.
+          // Es lo único parecido a un marcador que tiene el juego: la tinta
+          // del cuerpo se lee en el propio personaje, que se achica y se
+          // aclara, pero la reserva no se ve en ningún lado si no se dibuja.
+          if (MOSTRAR_RESERVA && LA_TINTA_SE_GASTA && !isWritingLevel())
+            drawReserva();
 
           // ---------- Nivel invertido ----------
           // En vez de tener dos paletas y acordarse de usar la correcta en
@@ -2418,6 +2932,230 @@
             ctx.fillRect(0, 0, viewW, viewH);
             ctx.restore();
           }
+        }
+
+        // ---------- Dibujo del cartucho de reserva ----------
+        // Un cartucho de lapicera trazado con tinta sobre la hoja: contorno
+        // finito, adentro lo que queda y un piquito del lado por donde sale.
+        // Vacío no desaparece —queda el contorno— para que se entienda que
+        // eso era algo y ya se gastó, en vez de dejar un hueco sin explicar.
+        function capsulaPath(x, y, w, h) {
+          const r = h / 2;
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.lineTo(x + w - r, y);
+          ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+          ctx.lineTo(x + r, y + h);
+          ctx.arc(x + r, y + r, r, Math.PI / 2, -Math.PI / 2);
+          ctx.closePath();
+        }
+        function drawReserva() {
+          const w = 44,
+            h = 6;
+          const x = 18,
+            y = viewH - 24;
+          const q = Math.max(0, Math.min(1, reserva / RESERVA_LLENA));
+          ctx.save();
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = "rgba(28,28,28,0.3)";
+          ctx.lineWidth = 1;
+          capsulaPath(x, y, w, h);
+          ctx.stroke();
+          if (q > 0.001) {
+            ctx.save();
+            capsulaPath(x, y, w, h);
+            ctx.clip();
+            ctx.fillStyle = "rgba(28,28,28,0.55)";
+            ctx.fillRect(x, y, w * q, h);
+            ctx.restore();
+          }
+          ctx.fillStyle = "rgba(28,28,28,0.3)";
+          ctx.beginPath();
+          ctx.moveTo(x + w + 1.5, y);
+          ctx.lineTo(x + w + 5.5, y + h / 2);
+          ctx.lineTo(x + w + 1.5, y + h);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // ---------- Dibujo del punto final ----------
+        // Ya no es un charquito de tinta ni un círculo: es una FIGURA
+        // MUSICAL —♩ ♪ ♫ ♬, los mismos cuatro caracteres que usa el
+        // portfolio— en gris
+        // grafito, no en la tinta negra del resto del juego. Las claves
+        // quedaron afuera a propósito: no son notas, no suenan y no
+        // tienen duración, así que como "punto final" mentían sobre lo
+        // que el punto es. Tiene sentido para este juego: cada letra
+        // ya suena una nota al pisarla (ver playNextNote), así que el
+        // punto final termina siendo, literalmente, LA nota.
+        //
+        // Qué figura le toca a cada nivel sale de un hash de su posición
+        // en el mundo (hashFigura): es determinístico —el mismo nivel
+        // siempre muestra la misma figura, no cambia de cuadro en
+        // cuadro— pero varía de un nivel a otro sin tener que elegirlo a
+        // mano en ningún lado.
+        //
+        // La colisión para levantarlo sigue siendo la ZONA CIRCULAR de
+        // siempre (ver PUNTO_RADIO, usado también en update()): pasar
+        // cerca de la figura alcanza, no hace falta tocarla justo en el
+        // trazo.
+        //
+        // El glifo se escribe DOS veces, una marcada y una más tenue y
+        // apenas corrida (con un vaivén suave, no al azar cuadro a
+        // cuadro), así se acumula el gris como grafito repasado en vez de
+        // quedar un símbolo plano y quieto.
+        const PUNTO_RADIO = 13; // qué tan grande es la figura y su zona de colisión, en px de mundo
+        const PUNTO_TEMBLOR = 0.035; // amplitud del tembleque de pulso (0 = quieto y rígido)
+        // Gris grafito, no negro de tinta: es lo que la distingue a
+        // simple vista del resto del dibujo (que es todo tinta negra) y
+        // la hace leer como "una marca aparte", no como una plataforma.
+        // Más oscuro que antes (era 95,95,95) para que el trazo grueso no
+        // quede lavado.
+        const PUNTO_COLOR = "55,55,55";
+
+        // Qué figura le toca a un punto según dónde está: un hash chico
+        // (sin() como generador de ruido) que da siempre el mismo número
+        // para la misma posición, así la elección no cambia de cuadro en
+        // cuadro ni hace falta guardarla en ningún lado.
+        //
+        // Los nombres son los que eligen el sonido (ver BAJOS_FILES):
+        // ♩ negra, ♪ una corchea, ♫ dos corcheas, ♬ semicorcheas.
+        const PUNTO_FIGURAS = ["negra", "corchea", "corcheas", "semicorcheas"];
+        function hashFigura(px, py) {
+          const h = Math.sin(px * 12.9898 + py * 78.233) * 43758.5453;
+          const frac = h - Math.floor(h);
+          return PUNTO_FIGURAS[Math.floor(frac * PUNTO_FIGURAS.length)];
+        }
+
+        /* ---------- Los glifos ----------
+           Los mismos cuatro caracteres Unicode que usa el portfolio
+           (NOTE_CHARS en su script.js). No hace falta cargar ninguna
+           fuente: los trae el sistema.
+
+           El glifo se pinta DOS veces, una marcada y otra más tenue y
+           apenas corrida, con un vaivén suave: eso es lo que mantiene el
+           gris de grafito y el movimiento en vez de dejar un símbolo
+           plano y quieto. El tembleque de rotación y el flote al
+           recolectarla no viven acá (están en drawPuntoFinal y
+           drawFloatingNotes). */
+        const NOTA_PILA = '"Segoe UI Symbol", "Apple Symbols", sans-serif';
+        const NOTA_TAM = 34; // alto del glifo, en el mismo espacio de dibujo que el resto (RADIO = 13)
+        const NOTA_OFFSET_Y = 0; // corrección fina si el glifo queda alto o bajo respecto del renglón
+        const NOTA_GLIFOS = {
+          negra: "♩",
+          corchea: "♪",
+          corcheas: "♫",
+          semicorcheas: "♬",
+        };
+
+        function dibujarNota(tipo, t) {
+          const glifo = NOTA_GLIFOS[tipo] || NOTA_GLIFOS.negra;
+          ctx.font = `${NOTA_TAM}px ${NOTA_PILA}`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          ctx.fillStyle = `rgba(${PUNTO_COLOR},0.9)`;
+          ctx.fillText(glifo, 0, NOTA_OFFSET_Y);
+
+          // la segunda pasada, corrida por un vaivén de pulso: el gris se
+          // acumula como grafito repasado y la figura nunca queda del todo
+          // quieta
+          const dx = Math.sin(t * 1.3) * 0.35;
+          const dy = Math.cos(t * 1.7) * 0.35;
+          ctx.fillStyle = `rgba(${PUNTO_COLOR},0.4)`;
+          ctx.fillText(glifo, dx, NOTA_OFFSET_Y + dy);
+        }
+
+        /* ---------- Notas que flotan al recolectarse ----------
+           Al levantar el punto final, la figura no se corta de golpe: se
+           despega del renglón y queda flotando —para arriba y a la
+           izquierda o para arriba y a la derecha, al azar— girando de a
+           poco y con un vaivén lateral irregular, mientras se va
+           disolviendo. Es la misma figura (dibujarNota) que ya sabe
+           dibujarse sola; acá solo se la mueve, se la rota y se le baja
+           el alpha con el correr de los cuadros. */
+        const FLOAT_NOTE_FRAMES = 70; // cuánto tarda en disolverse del todo (~1,2 s a 60fps)
+        const FLOAT_NOTE_VY = -0.95; // sube a este ritmo, en px de mundo por cuadro
+        const FLOAT_NOTE_VX = 0.55; // se corre para el costado a este ritmo
+        const FLOAT_NOTE_ROT_MAX = 0.05; // giro máximo por cuadro (a full, ~3° por cuadro)
+        let floatingNotes = [];
+
+        function spawnFloatingNote(x, y, tipo) {
+          // arriba a la izquierda o arriba a la derecha, con una pizca de
+          // azar en la velocidad para que dos notas no salgan clonadas
+          const dir = Math.random() < 0.5 ? -1 : 1;
+          floatingNotes.push({
+            x,
+            y,
+            vx: dir * FLOAT_NOTE_VX * (0.7 + Math.random() * 0.6),
+            vy: FLOAT_NOTE_VY * (0.7 + Math.random() * 0.6),
+            tipo,
+            life: FLOAT_NOTE_FRAMES,
+            age: 0,
+            // gira para el mismo lado que se va, pero no siempre a la misma
+            // velocidad: así ninguna nota rota exactamente igual a otra
+            rot: (Math.random() - 0.5) * 0.5,
+            vrot: dir * FLOAT_NOTE_ROT_MAX * (0.4 + Math.random() * 0.6),
+            // vaivén lateral: cada nota tiene su propio ritmo y punto de
+            // partida, para que el camino se vea errático y no una línea
+            // recta con inclinación
+            wobbleSeed: Math.random() * Math.PI * 2,
+            wobbleSpeed: 0.1 + Math.random() * 0.08,
+            wobbleAmp: 0.18 + Math.random() * 0.3,
+          });
+        }
+
+        function updateFloatingNotes() {
+          if (!floatingNotes.length) return;
+          for (const n of floatingNotes) {
+            n.age++;
+            const wobble =
+              Math.sin(n.age * n.wobbleSpeed + n.wobbleSeed) * n.wobbleAmp;
+            n.x += n.vx + wobble;
+            n.y += n.vy;
+            n.vy *= 0.985; // se va frenando de a poco, como perdiendo impulso
+            n.rot += n.vrot;
+            n.life--;
+          }
+          floatingNotes = floatingNotes.filter((n) => n.life > 0);
+        }
+
+        function drawFloatingNotes() {
+          if (!floatingNotes.length) return;
+          const t = performance.now() * 0.0006;
+          const s = PUNTO_RADIO / 13;
+          for (const n of floatingNotes) {
+            const alpha = Math.max(0, n.life / FLOAT_NOTE_FRAMES);
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.translate(n.x, n.y);
+            ctx.rotate(n.rot);
+            ctx.scale(s, s);
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            dibujarNota(n.tipo, t);
+            ctx.restore();
+          }
+        }
+
+        function drawPuntoFinal(px, py) {
+          const t = performance.now() * 0.0006;
+          const tipo = hashFigura(px, py);
+          const s = PUNTO_RADIO / 13; // el diseño de acá arriba está pensado para RADIO=13
+
+          ctx.save();
+          ctx.translate(px, py);
+          // el pulso de una mano: un vaivén de rotación chiquito, no un
+          // giro completo (una nota dada vuelta se lee como otra cosa)
+          ctx.rotate(Math.sin(t * 1.4) * PUNTO_TEMBLOR);
+          ctx.scale(s, s);
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+
+          dibujarNota(tipo, t);
+
+          ctx.restore();
         }
 
         // ---------- La mancha de tinta ----------
@@ -2527,9 +3265,10 @@
             0,
             inkBaseR + 2,
           );
-          inkGrad.addColorStop(0, "#3a3a3a");
-          inkGrad.addColorStop(0.55, "#1a1a1a");
-          inkGrad.addColorStop(1, "#0a0a0a");
+          const tint = (opts && opts.tint) || ["#3a3a3a", "#1a1a1a", "#0a0a0a"];
+          inkGrad.addColorStop(0, tint[0]);
+          inkGrad.addColorStop(0.55, tint[1]);
+          inkGrad.addColorStop(1, tint[2]);
           ctx.fillStyle = inkGrad;
           ctx.fill();
 
@@ -2552,11 +3291,25 @@
           return t * Math.exp(1 - t);
         }
 
+        // "active" admite dos cosas: el booleano de siempre (lo que usa la
+        // flecha de volver, que está o no está según el capítulo) o un número
+        // de 0 a 1 para encenderla de a poco. El 0,22 de apagada no cambió:
+        // sigue siendo el piso, y el fade recorre de ahí hasta el negro.
+        const NAV_ARROW_OFF = 0.22;
         function drawNavArrow(box, dir, hitFrames, active, impact) {
           const cx = box.x + box.w / 2,
             cy = box.y + box.h / 2;
+          const encendido =
+            typeof active === "number"
+              ? Math.max(0, Math.min(1, active))
+              : active
+                ? 1
+                : 0;
+          // suavizado: arranca y termina despacio, así no se ve el momento en
+          // que la animación empieza ni el que termina
+          const suave = encendido * encendido * (3 - 2 * encendido);
           ctx.save();
-          ctx.globalAlpha = active ? 1 : 0.22;
+          ctx.globalAlpha = NAV_ARROW_OFF + (1 - NAV_ARROW_OFF) * suave;
 
           let offsetX = 0,
             offsetY = 0,
@@ -2620,6 +3373,15 @@
             navHitRight--;
             if (navHitRight === 0) navImpactRight = null;
           }
+          // y acá también, por lo mismo: el segundo que la flecha tarda en
+          // encenderse cae justo mientras el juego está por cambiar de mano
+          const paso = 1 / SALIDA_FADE_FRAMES;
+          const objetivo = salidaAbierta() ? 1 : 0;
+          if (salidaFade < objetivo) {
+            salidaFade = Math.min(objetivo, salidaFade + paso);
+          } else if (salidaFade > objetivo) {
+            salidaFade = Math.max(objetivo, salidaFade - paso);
+          }
           update();
           draw();
           requestAnimationFrame(loop);
@@ -2637,26 +3399,42 @@
 
         // Tecla E para entrar al editor mientras se juega. Poné esto en false
         // para publicar el juego sin la entrada al editor (igual queda
-        // disponible abriendo "index.html?editor=1").
+        // disponible abriendo "index.html?editor=1"). En celular no aplica:
+        // el modo edición está cerrado por completo, ver editorOpen().
         const EDITOR_HOTKEY = true;
 
         const editorBanner = document.getElementById("editorBanner");
         const editorBar = document.getElementById("editorBar");
         const editorCaretInfo = document.getElementById("editorCaretInfo");
         const editorFlashEl = document.getElementById("editorFlash");
+        const editorAuditEl = document.getElementById("editorAudit");
         const editorPanel = document.getElementById("editorPanel");
         const editorSendPanel = document.getElementById("editorSendPanel");
         const editorPastePanel = document.getElementById("editorPastePanel");
         const editorFileInput = document.getElementById("editorFileInput");
         const typeProxy = document.getElementById("editorTypeProxy");
         const edNumInput = document.getElementById("edNum");
+        const edInkInput = document.getElementById("edInk");
 
-        const MARKER_TAGS = { spawn: "(^)", prev: "(<)", next: "(*)" };
+        const MARKER_TAGS = {
+          spawn: "(^)",
+          prev: "(<)",
+          next: "(*)",
+          punto: "(.)",
+          drop: "(o)",
+        };
         const MARKER_NAMES = {
           spawn: "aparición del personaje",
           prev: "flecha anterior",
           next: "flecha siguiente",
+          punto: "punto final",
+          drop: "gota de tinta",
         };
+        // Las marcas de las que hay UNA sola por nivel. Van en casilleros
+        // (editor.markers.spawn, .punto, etc.) y no en lista como las gotas,
+        // así que todo lo que corre, borra o guarda marcas las recorre por
+        // acá: agregar una marca nueva es agregarla a esta lista y nada más.
+        const MARCAS_UNICAS = ["spawn", "prev", "next", "punto"];
         const MAX_ROW = 400; // techo sano, para no fabricar mundos gigantes sin querer
         const MAX_COL = 400;
 
@@ -2687,48 +3465,70 @@
         // ---------- Marcas ----------
         function edMarkerAt(r) {
           const out = [];
-          for (const k of ["spawn", "prev", "next"]) {
+          for (const k of MARCAS_UNICAS) {
             const mk = editor.markers[k];
             if (mk && mk.row === r) out.push({ k, col: mk.col });
+          }
+          for (const d of editor.drops) {
+            if (d.row === r) out.push({ k: "drop", col: d.col });
           }
           return out;
         }
         // Corre las marcas de un renglón cuando se escribe o se borra texto a
         // su izquierda, para que queden pegadas a lo que el autor escribió.
         function edShiftMarkers(row, fromCol, delta) {
-          for (const k of ["spawn", "prev", "next"]) {
+          for (const k of MARCAS_UNICAS) {
             const mk = editor.markers[k];
             if (mk && mk.row === row && mk.col >= fromCol) {
               mk.col = Math.max(0, mk.col + delta);
             }
           }
+          for (const d of editor.drops) {
+            if (d.row === row && d.col >= fromCol) {
+              d.col = Math.max(0, d.col + delta);
+            }
+          }
         }
         function edShiftMarkerRows(fromRow, delta) {
-          for (const k of ["spawn", "prev", "next"]) {
+          for (const k of MARCAS_UNICAS) {
             const mk = editor.markers[k];
             if (mk && mk.row >= fromRow) {
               mk.row += delta;
               if (mk.row < 2 && mk.row !== 0) editor.markers[k] = null;
             }
           }
+          for (const d of editor.drops) {
+            if (d.row >= fromRow) d.row += delta;
+          }
+          editor.drops = editor.drops.filter((d) => d.row === 0 || d.row >= 2);
         }
 
         // Devuelve el renglón TAL CUAL va al archivo: el texto del autor con
-        // las marcas insertadas en su columna. El motor lee cada marca con
-        // indexOf() sobre este texto, así que insertándolas de izquierda a
-        // derecha en la cadena que se va armando, el índice que encuentra el
-        // motor es exactamente la columna elegida acá.
+        // las marcas intercaladas en su columna. Las marcas no ocupan lugar en
+        // la hoja (el motor las saca del texto antes de dibujarlo), así que se
+        // arma caminando las columnas visibles una por una y soltando ahí las
+        // marcas que correspondan. De esta forma puede haber tantas gotas como
+        // quiera el nivel, incluso pegadas una al lado de la otra, y ninguna
+        // corre de lugar a las demás.
         function editorRawRow(r) {
           const here = edMarkerAt(r);
-          let out = edGetRow(r);
-          if (!here.length) return out;
+          const texto = edGetRow(r);
+          if (!here.length) return texto;
           here.sort((a, b) => a.col - b.col);
-          let minAt = 0;
-          for (const m of here) {
-            let at = Math.max(m.col, minAt);
-            if (at > out.length) out = out.padEnd(at, " ");
-            out = out.slice(0, at) + MARKER_TAGS[m.k] + out.slice(at);
-            minAt = at + 3;
+          const hasta = Math.max(texto.length, here[here.length - 1].col);
+          let out = "";
+          let i = 0;
+          for (let col = 0; col <= hasta; col++) {
+            while (i < here.length && here[i].col === col) {
+              out += MARKER_TAGS[here[i].k];
+              i++;
+            }
+            if (col < texto.length) out += texto[col];
+            else if (i < here.length) out += " ";
+          }
+          while (i < here.length) {
+            out += MARKER_TAGS[here[i].k];
+            i++;
           }
           return out;
         }
@@ -2736,10 +3536,11 @@
         // Hasta qué fila llega el nivel (sin contar dónde esté el cursor)
         function editorMaxRow() {
           let m = 2 + editor.lines.length;
-          for (const k of ["spawn", "prev", "next"]) {
+          for (const k of MARCAS_UNICAS) {
             const mk = editor.markers[k];
             if (mk) m = Math.max(m, mk.row + 1);
           }
+          for (const d of editor.drops) m = Math.max(m, d.row + 1);
           return m;
         }
 
@@ -2782,6 +3583,7 @@
             title,
             growsUp: editor.growsUp,
             inverted: editor.inverted,
+            ink: editor.ink,
           };
           page = buildPage(EDITOR_PAGE);
           if (editorCaretInfo) {
@@ -2790,6 +3592,311 @@
               " · columna " +
               (editor.col + 1);
           }
+          editorScheduleAudit();
+        }
+
+        // ---------- Qué se puede jugar de lo que está escrito ----------
+        // Dos preguntas que el editor puede contestar solo, y que antes había
+        // que descubrir jugando: ¿a esta letra se llega?, ¿y alcanza la tinta
+        // para llegar hasta la flecha de salida?
+        //
+        // El salto del personaje es una parábola conocida, así que se puede
+        // decidir de antemano si desde el tope de una letra se llega al tope
+        // de otra. Con eso las letras forman un mapa de caminos y el resto es
+        // recorrerlo desde donde aparece el personaje.
+        const JUMP_H = (JUMP_VELOCITY * JUMP_VELOCITY) / (2 * GRAVITY);
+        // El análisis es ESTRICTO: mide lo que se llega jugando bien, no lo
+        // que se llega en el papel. Tres descuentos, todos por el mismo
+        // motivo — nadie clava el salto perfecto al primer intento:
+        //   SEGURO_H  cuánto del salto se reserva de colchón (no se cuenta
+        //             llegar justo al pelo del ápice: ahí no se pisa nada)
+        //   SEGURO_V  cuánto se descuenta del corrimiento lateral, porque se
+        //             sale del salto acelerando, no a plena velocidad
+        //   BORDE     margen de aterrizaje: pisar el filo de una letra de
+        //             7,5 px no cuenta como alcanzarla
+        const SEGURO_H = 22; // px de salto que no se cuentan
+        const SEGURO_V = 0.72; // del corrimiento lateral teórico
+        const BORDE = 3;
+        // Hasta dónde se mira para abajo. No es un límite de juego (caer
+        // derecho 2000 px es perfectamente posible, y los niveles de caída
+        // larga viven de eso): es el techo de la búsqueda de vecinos.
+        const CAIDA_MAX = 2200;
+        // El cono se cierra: cuanto más larga la bajada, menos creíble es que
+        // se pueda usar todo el tiempo de aire para correrse de costado sin
+        // llevarse puesta una letra del camino. Pasa igual saltando que
+        // dejándose caer, así que vive acá afuera y no adentro de una sola.
+        function conoAlBajar(caida) {
+          const cierre = Math.min(1, 260 / Math.max(1, caida));
+          return 0.45 + 0.55 * cierre;
+        }
+        // Cuánto se corre de costado UN salto que termina "alto" px por encima
+        // de donde arrancó. Con "alto" negativo el piso de llegada está más
+        // abajo: la misma parábola dura más y por eso se llega más lejos. Sirve
+        // para los tres casos —subir, llano y bajar—, porque saltar nunca llega
+        // menos lejos que dejarse caer.
+        function jumpReachAt(alto) {
+          const util = JUMP_H - SEGURO_H;
+          if (alto > util) return -1; // no llega tan alto de forma confiable
+          const disc = JUMP_VELOCITY * JUMP_VELOCITY - 2 * GRAVITY * alto;
+          const t = (-JUMP_VELOCITY + Math.sqrt(disc)) / GRAVITY;
+          const cono = conoAlBajar(Math.max(0, -alto));
+          return MOVE_SPEED * t * SEGURO_V * cono - BORDE;
+        }
+        // Cayendo se cuenta la gravedad PLENA: el paracaídas da más aire, pero
+        // pedirle al jugador que lo mantenga abierto todo el tramo justo para
+        // que el salto salga es exactamente lo que un aviso estricto no
+        // debería dar por hecho.
+        function fallReachAt(caida) {
+          const g = GRAVITY;
+          const vTope = MAX_FALL_SPEED;
+          const yTope = (vTope * vTope) / (2 * g);
+          let t;
+          if (caida <= yTope) t = Math.sqrt((2 * caida) / g);
+          else t = vTope / g + (caida - yTope) / vTope;
+          return MOVE_SPEED * t * SEGURO_V * conoAlBajar(caida) - BORDE;
+        }
+        // ¿Se llega del tope de A al tope de B? Devuelve el largo del tramo
+        // (para poder sumar el recorrido) o -1 si no se llega.
+        function hopCost(ax, ay, bx, by) {
+          const dy = by - ay; // positivo = B está más abajo
+          const ancho = Math.max(0, Math.abs(bx - ax) - PLATFORM_W / 2);
+          // Dos maneras de ir de A a B, y vale la que llegue más lejos:
+          // SALTANDO —que sirve para arriba, para el llano y también para
+          // abajo— o DEJÁNDOSE CAER de la punta, que llega bastante menos
+          // lejos pero tampoco pide clavar el salto. Antes, con B al mismo
+          // nivel o más abajo se contaba SOLO la caída, y entonces dos letras
+          // del mismo renglón quedaban incomunicadas (la caída de 0 px da 0
+          // tiempo de aire) aunque en el juego se cruzan de un salto.
+          const alcance = Math.max(
+            jumpReachAt(-dy + PLATFORM_H),
+            dy > 0 ? fallReachAt(dy) : -1,
+          );
+          if (alcance < 0 || ancho > alcance) return -1;
+          return Math.hypot(bx - ax, dy) + 1;
+        }
+        // Techo del corrimiento lateral: sirve para descartar de una a los
+        // vecinos lejanos sin calcularles el tramo. Sale de las mismas
+        // fórmulas y no de un número a ojo, así que si mañana cambia la
+        // gravedad, el salto o el tope de caída, se acomoda solo.
+        const ALCANCE_MAX = (() => {
+          let m = jumpReachAt(0);
+          for (let d = 0; d <= CAIDA_MAX; d += 5) {
+            m = Math.max(m, jumpReachAt(-d + PLATFORM_H), fallReachAt(d));
+          }
+          return m + PLATFORM_W;
+        })();
+
+        // Cada letra se identifica por dónde está escrita y no por su lugar
+        // en el array de plataformas: la hoja se rearma con cada tecla y los
+        // índices se corren, así que un número guardado del análisis anterior
+        // termina subrayando la letra equivocada hasta que corre el siguiente.
+        function platKey(p) {
+          return p.colIndex + "|" + p.rowIndex + "|" + p.charIndex;
+        }
+
+        // Lo que quedó del último análisis: qué letras no se alcanzan (para
+        // subrayarlas en la hoja) y el resumen de tinta.
+        let edAudit = { lejos: new Set(), texto: "", gotasFaltan: 0 };
+        let edAuditTimer = null;
+        function editorScheduleAudit() {
+          clearTimeout(edAuditTimer);
+          edAuditTimer = setTimeout(editorRunAudit, 140);
+        }
+        function editorRunAudit() {
+          if (!editorAuditEl) return;
+          if (!editor.active || editor.playing) {
+            editorAuditEl.classList.add("hidden");
+            return;
+          }
+          editorAuditEl.classList.remove("hidden");
+          const plats = page.platforms;
+          const n = plats.length;
+          edAudit = { lejos: new Set(), texto: "", gotasFaltan: 0 };
+          if (!n) {
+            editorAuditEl.textContent = "hoja en blanco";
+            return;
+          }
+          if (n > 2600) {
+            editorAuditEl.textContent =
+              "nivel muy grande para revisarlo mientras escribís";
+            return;
+          }
+
+          // Los topes de las letras, ordenados de arriba hacia abajo: así la
+          // búsqueda de vecinos se puede cortar por altura.
+          const nodos = plats
+            .map((p, i) => ({ i, x: p.x + p.w / 2, y: p.y }))
+            .sort((a, b) => a.y - b.y);
+          const dist = new Array(n).fill(Infinity);
+          const cola = [];
+
+          // De dónde sale: la marca de aparición, o el arranque del nivel.
+          const sx = page.startX + 4.5;
+          const sy = page.startY;
+          for (const nd of nodos) {
+            const c = hopCost(sx, sy, nd.x, nd.y);
+            // El primer tramo también se paga: si no, un nivel de caída larga
+            // daría "llegás gratis" y la cuenta de gotas saldría en cero.
+            if (c >= 0) {
+              dist[nd.i] = c;
+              cola.push(nd);
+            }
+          }
+          // Dijkstra a mano sobre pocos nodos: se saca siempre el más cercano.
+          const listos = new Set();
+          const porIndice = new Array(n);
+          for (const nd of nodos) porIndice[nd.i] = nd;
+          while (cola.length) {
+            let mejor = 0;
+            for (let k = 1; k < cola.length; k++) {
+              if (dist[cola[k].i] < dist[cola[mejor].i]) mejor = k;
+            }
+            const a = cola.splice(mejor, 1)[0];
+            if (listos.has(a.i)) continue;
+            listos.add(a.i);
+            for (const b of nodos) {
+              if (listos.has(b.i)) continue;
+              const dy = b.y - a.y;
+              if (dy > CAIDA_MAX) continue;
+              if (dy < -JUMP_H - PLATFORM_H) continue;
+              if (Math.abs(b.x - a.x) > ALCANCE_MAX) continue;
+              const c = hopCost(a.x, a.y, b.x, b.y);
+              if (c < 0) continue;
+              if (dist[a.i] + c < dist[b.i]) {
+                dist[b.i] = dist[a.i] + c;
+                cola.push(b);
+              }
+            }
+          }
+
+          for (let i = 0; i < n; i++) {
+            if (!isFinite(dist[i])) edAudit.lejos.add(platKey(plats[i]));
+          }
+
+          // La flecha de salida: hasta dónde hay que llegar. No se vuelve a
+          // calcular acá: se usa la que ya armó buildPage(), que es la que se
+          // va a dibujar. Así se mide contra la flecha de verdad —corrida
+          // NAV_GAP_RIGHT a la derecha del último caracter, o sea 30 px más
+          // lejos que la columna del marcador— y además funciona igual sin
+          // marca, cuando la flecha se acomoda sola al final del último
+          // renglón escrito.
+          const mk = editor.markers.next;
+          // ¿Se llega saltando hasta este lugar de la hoja? Devuelve el
+          // recorrido más corto desde la aparición, o Infinity si no se
+          // llega. Lo usan los dos lugares que importan: la flecha de salida
+          // y, ahora, el punto final.
+          function costoHasta(px, py) {
+            let mejor = Infinity;
+            for (const nd of nodos) {
+              if (!isFinite(dist[nd.i])) continue;
+              const c = hopCost(nd.x, nd.y, px, py);
+              if (c >= 0) mejor = Math.min(mejor, dist[nd.i] + c);
+            }
+            return mejor;
+          }
+
+          let linea1;
+          {
+            // alcanza con rozarla: el borde izquierdo de la caja menos medio
+            // cuerpo es el punto más cercano que ya cuenta como tocarla
+            const fx = page.navRowLastCharEndX + NAV_GAP_RIGHT - BODY_BASE / 2;
+            const fy = page.rightNavRowY;
+            const mejorD = costoHasta(fx, fy);
+            if (!isFinite(mejorD)) {
+              linea1 = "⚠ a la flecha de siguiente no se llega saltando";
+            } else if (!LA_TINTA_SE_GASTA) {
+              // Sin tinta que administrar, de la flecha solo queda por saber
+              // si se llega. Lo que puede volver injugable un nivel ahora es
+              // dónde quedó el punto final, y eso va en su propio renglón.
+              linea1 = "a la flecha de siguiente se llega saltando";
+            } else {
+              // El camino corto va en línea recta de letra en letra; jugando
+              // se camina bastante más: se tantea, se vuelve, se cae. Y hay
+              // que llegar a la flecha con algo en el tanque, no en la última
+              // gota: por eso la reserva.
+              const RODEO = 1.9;
+              const MARGEN = 0.12;
+              const recorrido = mejorD * RODEO;
+              const necesita = recorrido / INK_RANGE + MARGEN;
+              if (GOTAS_DE_TINTA) {
+                const faltan = Math.max(
+                  0,
+                  Math.ceil((necesita - editor.ink) / DROP_INK),
+                );
+                edAudit.gotasFaltan = faltan;
+                const puestas = editor.drops.length;
+                const gotas = (k) => k + (k === 1 ? " gota" : " gotas");
+                if (faltan === 0) {
+                  linea1 =
+                    "con " +
+                    Math.round(editor.ink * 100) +
+                    "% de tinta llega hasta la flecha sin recolectar";
+                } else {
+                  linea1 =
+                    "hacen falta <b>" +
+                    gotas(faltan) +
+                    "</b> para llegar a la flecha · " +
+                    (puestas
+                      ? "hay " + gotas(puestas)
+                      : "todavía no pusiste ninguna");
+                }
+                if (faltan > 0 && puestas >= faltan) {
+                  linea1 += " ✓";
+                }
+              } else {
+                // Sin gotas que levantar la cuenta es directa: o el nivel
+                // arranca con tinta suficiente para el recorrido, o no.
+                // Importante: esto NO mide el secado, porque el reloj depende
+                // de cuánto tarde el jugador y eso el editor no lo puede
+                // saber. Es el piso mínimo, no el margen real: si un nivel da
+                // justo acá, jugándolo va a quedar corto.
+                edAudit.gotasFaltan = 0;
+                const tiene = Math.round(editor.ink * 100);
+                linea1 =
+                  necesita <= editor.ink
+                    ? "con " +
+                      tiene +
+                      "% de tinta llega hasta la flecha (sin contar el secado)"
+                    : "⚠ con " +
+                      tiene +
+                      "% no llega: el recorrido pide <b>" +
+                      Math.ceil(necesita * 100) +
+                      "%</b>";
+              }
+            }
+          }
+          const lejos = edAudit.lejos.size;
+          const linea2 =
+            lejos === 0
+              ? "todas las letras están a tiro de salto"
+              : "⚠ <b>" +
+                lejos +
+                (lejos === 1 ? " letra queda" : " letras quedan") +
+                "</b> fuera de alcance (subrayadas)";
+          // ---------- El punto final ----------
+          // Las dos maneras de arruinar un nivel con la regla nueva: no
+          // ponerlo —y entonces el nivel se pasa de largo, sin dificultad— o
+          // ponerlo donde no se llega, y entonces no se puede terminar.
+          //
+          // OJO con lo que esto mide y lo que no: las dos distancias salen
+          // DESDE LA APARICIÓN. Que se llegue al punto y que se llegue a la
+          // flecha no garantiza que se pueda hacer el recorrido entero, ir a
+          // buscar el punto y después volver hasta la flecha. Eso solo lo
+          // contesta jugarlo.
+          let lineaPunto;
+          if (!page.punto) {
+            lineaPunto =
+              "\n⚠ este nivel no tiene <b>punto final</b>: la flecha queda abierta desde el arranque (alt+. para ponerlo)";
+          } else if (!isFinite(costoHasta(page.punto.x, page.punto.y))) {
+            lineaPunto = "\n⚠ al <b>punto final</b> no se llega saltando";
+          } else {
+            lineaPunto = "\nal <b>punto final</b> se llega ✓";
+          }
+          const linea3 = mk
+            ? ""
+            : "\nla flecha de salida se acomoda sola al final del último renglón (alt+n para elegir dónde va)";
+          editorAuditEl.innerHTML =
+            linea1 + "\n" + linea2 + lineaPunto + linea3;
         }
 
         // ---------- Dónde está el cursor, en coordenadas del mundo ----------
@@ -2803,6 +3910,23 @@
         function drawEditorOverlay() {
           const y = caretWorldY();
           const x = caretWorldX();
+
+          // Las letras a las que no se llega saltando van subrayadas: se ven
+          // como una corrección al margen, no como un error de sistema.
+          if (edAudit.lejos.size) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(180,60,60,0.5)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            for (const p of page.platforms) {
+              if (!edAudit.lejos.has(platKey(p))) continue;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y + PLATFORM_H + 2.5);
+              ctx.lineTo(p.x + p.w, p.y + PLATFORM_H + 2.5);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
 
           // banda tenue sobre el renglón que se está escribiendo, del mismo
           // gris que la sombra de las plataformas: se lee como el renglón de
@@ -2883,12 +4007,14 @@
           const idx = r - 2;
           if (idx >= editor.lines.length) return;
           editor.lines.splice(idx, 1);
-          for (const k of ["spawn", "prev", "next"]) {
+          for (const k of MARCAS_UNICAS) {
             const mk = editor.markers[k];
             if (!mk) continue;
             if (mk.row === r) editor.markers[k] = null;
             else if (mk.row > r) mk.row -= 1;
           }
+          editor.drops = editor.drops.filter((d) => d.row !== r);
+          for (const d of editor.drops) if (d.row > r) d.row -= 1;
         }
 
         function editorBackspace() {
@@ -2962,11 +4088,17 @@
           editor.lines.splice(idx + 1, 0, tail);
           edShiftMarkerRows(r + 1, 1);
           // lo que quedaba a la derecha del corte baja junto con su texto
-          for (const k of ["spawn", "prev", "next"]) {
+          for (const k of MARCAS_UNICAS) {
             const mk = editor.markers[k];
             if (mk && mk.row === r && mk.col > editor.col) {
               mk.row = r + 1;
               mk.col -= editor.col;
+            }
+          }
+          for (const d of editor.drops) {
+            if (d.row === r && d.col > editor.col) {
+              d.row = r + 1;
+              d.col -= editor.col;
             }
           }
           editor.row = Math.min(MAX_ROW, r + 1);
@@ -3037,11 +4169,13 @@
           return {
             title: editor.title,
             lines: editor.lines.slice(),
-            markers: {
-              spawn: editor.markers.spawn ? { ...editor.markers.spawn } : null,
-              prev: editor.markers.prev ? { ...editor.markers.prev } : null,
-              next: editor.markers.next ? { ...editor.markers.next } : null,
-            },
+            markers: Object.fromEntries(
+              MARCAS_UNICAS.map((k) => [
+                k,
+                editor.markers[k] ? { ...editor.markers[k] } : null,
+              ]),
+            ),
+            drops: editor.drops.map((d) => ({ ...d })),
             row: editor.row,
             col: editor.col,
           };
@@ -3049,11 +4183,13 @@
         function edRestore(s) {
           editor.title = s.title;
           editor.lines = s.lines.slice();
-          editor.markers = {
-            spawn: s.markers.spawn ? { ...s.markers.spawn } : null,
-            prev: s.markers.prev ? { ...s.markers.prev } : null,
-            next: s.markers.next ? { ...s.markers.next } : null,
-          };
+          editor.markers = Object.fromEntries(
+            MARCAS_UNICAS.map((k) => [
+              k,
+              s.markers[k] ? { ...s.markers[k] } : null,
+            ]),
+          );
+          editor.drops = (s.drops || []).map((d) => ({ ...d }));
           editor.row = s.row;
           editor.col = s.col;
           editor.sel = null;
@@ -3133,8 +4269,7 @@
         function edSelRange() {
           const a = editor.sel || { row: editor.row, col: editor.col };
           const b = { row: editor.row, col: editor.col };
-          const aPrimero =
-            a.row < b.row || (a.row === b.row && a.col <= b.col);
+          const aPrimero = a.row < b.row || (a.row === b.row && a.col <= b.col);
           const first = aPrimero ? a : b;
           const last = aPrimero ? b : a;
           return {
@@ -3262,7 +4397,7 @@
             for (;;) {
               let at = -1;
               let kind = null;
-              for (const k of ["spawn", "prev", "next"]) {
+              for (const k of [...MARCAS_UNICAS, "drop"]) {
                 const p = out.indexOf(MARKER_TAGS[k]);
                 if (p !== -1 && (at === -1 || p < at)) {
                   at = p;
@@ -3335,11 +4470,17 @@
             edShiftMarkerRows(startRow + 1, nuevos.length);
             // y las marcas que estaban a la derecha del corte viajan con la
             // cola, hasta el final del dibujo
-            for (const k of ["spawn", "prev", "next"]) {
+            for (const k of MARCAS_UNICAS) {
               const mk = editor.markers[k];
               if (mk && mk.row === startRow && mk.col >= startCol) {
                 mk.col = mk.col - startCol + startCol + ultimo.length;
                 mk.row = startRow + rows.length - 1;
+              }
+            }
+            for (const d of editor.drops) {
+              if (d.row === startRow && d.col >= startCol) {
+                d.col = d.col - startCol + startCol + ultimo.length;
+                d.row = startRow + rows.length - 1;
               }
             }
             editor.row = Math.min(MAX_ROW, startRow + rows.length - 1);
@@ -3353,6 +4494,15 @@
             if (m.row >= rows.length || m.col > rows[m.row].length) continue;
             const row = startRow + m.row;
             if (row === 1) continue;
+            if (m.kind === "drop") {
+              // de gotas puede haber tantas como quiera el nivel
+              editor.drops.push({
+                row,
+                col: Math.min(MAX_COL, startCol + m.col),
+              });
+              marcaNueva = true;
+              continue;
+            }
             if (editor.markers[m.kind]) {
               marcaRepetida = true; // la que ya estaba puesta manda
               continue;
@@ -3555,7 +4705,7 @@
         // posición final de verdad, pero conviene avisarlo.
         function editorMarkerConflict() {
           const rows = {};
-          for (const k of ["spawn", "prev", "next"]) {
+          for (const k of MARCAS_UNICAS) {
             const mk = editor.markers[k];
             if (!mk) continue;
             (rows[mk.row] = rows[mk.row] || []).push(mk.col);
@@ -3582,6 +4732,35 @@
                 : MARKER_NAMES[kind] + ": acá",
             );
           }
+          editorSyncPage();
+        }
+
+        // Las gotas no son un casillero único: se ponen y se sacan de a
+        // muchas, como puntos escritos sobre el papel.
+        function editorPlaceDrop() {
+          const at = editor.drops.findIndex(
+            (d) => d.row === editor.row && d.col === editor.col,
+          );
+          if (at !== -1) {
+            editor.drops.splice(at, 1);
+            editorFlash("gota de tinta: sacada");
+          } else {
+            editor.drops.push({ row: editor.row, col: editor.col });
+            const n = editor.drops.length;
+            editorFlash(
+              "gota de tinta: acá · " + n + (n === 1 ? " gota" : " gotas"),
+            );
+            // el cursor avanza solo, así se pueden sembrar varias seguidas
+            editor.col = Math.min(MAX_COL, editor.col + 1);
+          }
+          editorSyncPage();
+        }
+
+        // Con cuánta tinta arranca el nivel, en porcentaje del tanque. Es la
+        // otra mitad de la mecánica: bajándolo, el nivel obliga a recolectar.
+        function editorSetInk(pct) {
+          const n = Math.max(5, Math.min(100, Math.round(pct)));
+          editor.ink = n / 100;
           editorSyncPage();
         }
 
@@ -3613,6 +4792,12 @@
 
         function editorOpen() {
           if (editor.active) return;
+          // En celular no hay modo edición. El cierre va acá, en la única
+          // puerta por la que se entra, y no en cada atajo: así cualquier
+          // acceso que se agregue mañana queda tapado solo. El editor se
+          // escribe con teclado; ofrecerlo en un teléfono es ofrecer algo
+          // que no se puede usar.
+          if (esMovil()) return;
           savedPageIndex = pageIndex;
           editor.active = true;
           editor.playing = false;
@@ -3624,12 +4809,12 @@
           if (editorBar) editorBar.classList.remove("hidden");
           if (editorCaretInfo) editorCaretInfo.classList.remove("hidden");
           if (helpBubble) helpBubble.classList.add("hidden");
-          if (mobileTip) mobileTip.classList.add("hidden");
           editorSyncPage();
           camX = getTargetCamX();
           camY = caretWorldY() + LINE_H / 2 - viewH / 2;
           editorRefreshUI();
           editorFocusProxy();
+          editorRunAudit();
           editorFlash(
             "escribí el nivel · ctrl+v pega un dibujo · ▶ probar para jugarlo",
           );
@@ -3642,6 +4827,7 @@
           editorSource = null;
           if (editorBanner) editorBanner.classList.add("hidden");
           if (editorBar) editorBar.classList.add("hidden");
+          if (editorAuditEl) editorAuditEl.classList.add("hidden");
           if (editorCaretInfo) editorCaretInfo.classList.add("hidden");
           if (editorPanel) editorPanel.classList.add("hidden");
           if (typeProxy) typeProxy.blur();
@@ -3662,6 +4848,9 @@
           editorSyncPage();
           editor.playing = true;
           deaths = 0;
+          // probando un nivel sí se recarga: el autor lo va a correr veinte
+          // veces seguidas y no tiene sentido que la tercera arranque seca
+          reserva = RESERVA_LLENA;
           trail = [];
           navHitLeft = navHitRight = 0;
           navImpactLeft = navImpactRight = null;
@@ -3672,6 +4861,7 @@
           navCooldown = 45;
           if (typeProxy) typeProxy.blur();
           editorRefreshUI();
+          editorRunAudit();
           editorFlash("probando · esc para volver a escribir");
         }
 
@@ -3719,6 +4909,7 @@
           if (!editor.active) {
             if (
               EDITOR_HOTKEY &&
+              !esMovil() &&
               (e.key === "e" || e.key === "E") &&
               !e.ctrlKey &&
               !e.metaKey &&
@@ -3838,6 +5029,16 @@
             if (code === "KeyN") {
               e.preventDefault();
               editorPlaceMarker("next");
+              return true;
+            }
+            if (code === "Period") {
+              e.preventDefault();
+              editorPlaceMarker("punto");
+              return true;
+            }
+            if (code === "KeyO") {
+              e.preventDefault();
+              editorPlaceDrop();
               return true;
             }
             if (code === "KeyU") {
@@ -4007,6 +5208,9 @@
           if (edNumInput && document.activeElement !== edNumInput) {
             edNumInput.value = String(editor.levelNumber);
           }
+          if (edInkInput && document.activeElement !== edInkInput) {
+            edInkInput.value = String(Math.round(editor.ink * 100));
+          }
           if (editorCaretInfo) {
             editorCaretInfo.classList.toggle("hidden", editor.playing);
           }
@@ -4028,6 +5232,27 @@
         edOn("edSpawn", () => editorPlaceMarker("spawn"));
         edOn("edPrev", () => editorPlaceMarker("prev"));
         edOn("edNext", () => editorPlaceMarker("next"));
+        edOn("edPunto", () => editorPlaceMarker("punto"));
+        edOn("edDrop", () => editorPlaceDrop());
+        // Sin gotas en el juego, el botón de ponerlas no tiene sentido: se
+        // esconde en vez de dejar que alguien marque algo que nunca va a
+        // aparecer. El atajo alt+o sigue existiendo por si se vuelven a
+        // encender; los niveles viejos con marcas (o) no se tocan.
+        if (!GOTAS_DE_TINTA) {
+          const btnDrop = document.getElementById("edDrop");
+          if (btnDrop) btnDrop.classList.add("hidden");
+        }
+        // Y sin gasto de tinta, con cuánta carga arranca el nivel dejó de
+        // significar nada: se esconde el campo en vez de dejar una perilla
+        // que no mueve nada, y con él el renglón de ayuda que anunciaba el
+        // espacio. Los LEVEL_INK de los niveles viejos se siguen leyendo y
+        // guardando igual, simplemente no se usan.
+        if (!LA_TINTA_SE_GASTA) {
+          const campoInk = document.getElementById("edInkField");
+          if (campoInk) campoInk.classList.add("hidden");
+          const ayudaGrow = document.getElementById("helpGrow");
+          if (ayudaGrow) ayudaGrow.classList.add("hidden");
+        }
         edOn("edGrow", () => editorToggleGrowsUp());
         edOn("edInvert", () => editorToggleInverted());
         edOn("edQuit", () => editorClose());
@@ -4060,6 +5285,12 @@
             if (!isNaN(n) && n > 0) editor.levelNumber = n;
           });
         }
+        if (edInkInput) {
+          edInkInput.addEventListener("input", () => {
+            const n = parseInt(edInkInput.value, 10);
+            if (!isNaN(n)) editorSetInk(n);
+          });
+        }
 
         // ---------- Guardar el nivel ----------
         function editorExportSource() {
@@ -4080,6 +5311,9 @@
           }
           if (editor.inverted) {
             out += `window.LEVEL_INVERTED[${idxExpr}] = true;\n`;
+          }
+          if (editor.ink < 1) {
+            out += `window.LEVEL_INK[${idxExpr}] = ${editor.ink.toFixed(2)};\n`;
           }
           if (editor.isFinal) {
             out += "window.FINAL_LEVEL_INDEX = window.LEVEL_COUNT;\n";
@@ -4343,19 +5577,32 @@
         // el mismo criterio que el motor (indexOf sobre el texto crudo, el
         // título primero), así abrir y volver a guardar deja el archivo igual.
         function editorAdoptLevel(rawTitle, rawLines) {
-          editor.markers = { spawn: null, prev: null, next: null };
-          const strip = (t) =>
-            t
-              .replace(/\(\*\)/g, "")
-              .replace(/\(\^\)/g, "")
-              .replace(/\(<\)/g, "");
+          editor.markers = { spawn: null, prev: null, next: null, punto: null };
+          editor.drops = [];
+          // Se camina el renglón contando solo lo que va a quedar escrito,
+          // así una marca no le corre la columna a las que vienen después
+          // (con gotas repetidas en el mismo renglón, eso importa).
           const scan = (text, row) => {
-            for (const k of ["spawn", "prev", "next"]) {
-              if (editor.markers[k]) continue;
-              const i = text.indexOf(MARKER_TAGS[k]);
-              if (i !== -1) editor.markers[k] = { row, col: i };
+            let out = "";
+            for (let i = 0; i < text.length; ) {
+              const t = text.substr(i, 3);
+              let kind = null;
+              for (const k of [...MARCAS_UNICAS, "drop"]) {
+                if (MARKER_TAGS[k] === t) kind = k;
+              }
+              if (kind) {
+                if (kind === "drop") {
+                  editor.drops.push({ row, col: out.length });
+                } else if (!editor.markers[kind]) {
+                  editor.markers[kind] = { row, col: out.length };
+                }
+                i += 3;
+                continue;
+              }
+              out += text[i];
+              i++;
             }
-            return strip(text);
+            return out;
           };
           editor.title = scan(rawTitle || "", 0);
           editor.lines = (rawLines || []).map((l, i) => scan(l || "", i + 2));
@@ -4371,6 +5618,7 @@
           editorAdoptLevel(titles[idx] || "", (LEVELS[idx] || []).slice());
           editor.growsUp = !!(window.LEVEL_GROWS_UP || [])[idx];
           editor.inverted = !!(window.LEVEL_INVERTED || [])[idx];
+          editor.ink = getLevelStartInk(idx);
           editor.isFinal = !!isFinal;
           editor.levelNumber = number || 1;
           editorSyncPage();
@@ -4385,7 +5633,9 @@
         function editorNewLevel() {
           editor.title = "";
           editor.lines = [""];
-          editor.markers = { spawn: null, prev: null, next: null };
+          editor.markers = { spawn: null, prev: null, next: null, punto: null };
+          editor.drops = [];
+          editor.ink = 1;
           editor.growsUp = false;
           editor.inverted = false;
           editor.isFinal = false;
@@ -4459,6 +5709,7 @@
                   LEVEL_TITLES: [],
                   LEVEL_GROWS_UP: [],
                   LEVEL_INVERTED: [],
+                  LEVEL_INK: [],
                   LEVEL_COUNT: window.LEVEL_COUNT || 0,
                 };
                 new Function("window", String(reader.result))(box);
@@ -4472,6 +5723,10 @@
                 editorAdoptLevel(box.LEVEL_TITLES[idx] || "", box.LEVELS[idx]);
                 editor.growsUp = !!box.LEVEL_GROWS_UP[idx];
                 editor.inverted = !!box.LEVEL_INVERTED[idx];
+                editor.ink =
+                  typeof box.LEVEL_INK[idx] === "number"
+                    ? box.LEVEL_INK[idx]
+                    : 1;
                 editor.isFinal = mFinal;
                 editor.levelNumber = mNum ? parseInt(mNum[1], 10) : idx + 1;
                 if (editorPanel) editorPanel.classList.add("hidden");
@@ -4507,12 +5762,12 @@
         }
 
         // "index.html?editor=1" abre el juego directamente escribiendo un
-        // nivel en blanco, sin pasar por la partida
-        if (window.EDITOR_START) {
+        // nivel en blanco, sin pasar por la partida. En celular no: ahí el
+        // parámetro se ignora y arranca el juego normal.
+        if (window.EDITOR_START && !esMovil()) {
           editorNewLevel();
           editorOpen();
         }
-
         loop();
       })();
     </script>
